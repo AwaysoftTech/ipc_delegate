@@ -5,7 +5,7 @@ workflows:
     instance_type: mac_mini_m2
     environment:
       flutter: stable
-      xcode: latest
+      xcode: 16.4
       cocoapods: default
     triggering:
       events:
@@ -26,7 +26,7 @@ workflows:
           find . -name "Podfile" -execdir pod install \;
       - name: Build iOS app for simulator
         script: |
-          flutter build ios --simulator --debug
+          flutter build ios --simulator --debug -v
       - name: Zip simulator app
         script: |
           cd build/ios/iphonesimulator
@@ -37,7 +37,7 @@ workflows:
     publishing:
       email:
         recipients:
-          - awaysofttech@gmail.com.com
+          - awaysofttech@gmail.com
         notify:
           success: true
           failure: true

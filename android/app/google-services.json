@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "247392275240",
+    "project_id": "ipc-attendee",
+    "storage_bucket": "ipc-attendee.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:247392275240:android:5ac219ce9ec4b9baf71e1d",
+        "android_client_info": {
+          "package_name": "com.ipc.delegates"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyDfVBjFEDlfD8m6peYcmuOcf3yLxrU3tIY"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

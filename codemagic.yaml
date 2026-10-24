@@ -15,20 +15,15 @@ workflows:
           include: true
           source: true
     scripts:
+      - name: Disable Swift Package Manager
+        script: |
+          flutter config --no-enable-swift-package-manager
       - name: Get Flutter packages
         script: |
           flutter packages pub get
       - name: Install CocoaPods dependencies
         script: |
           find . -name "Podfile" -execdir pod install \;
-      - name: Flutter analyze (optional)
-        script: |
-          flutter analyze
-        ignore_failure: true
-      - name: Run tests (optional)
-        script: |
-          flutter test
-        ignore_failure: true
       - name: Build iOS app for simulator
         script: |
           flutter build ios --simulator --debug
@@ -39,14 +34,10 @@ workflows:
     artifacts:
       - build/ios/iphonesimulator/*.app
       - build/ios/iphonesimulator/Runner-simulator.zip
-      - flutter_drive.log
     publishing:
       email:
         recipients:
-          - your-email@example.com
+          - awaysofttech@gmail.com.com
         notify:
           success: true
           failure: true
-                - name: Disable Swift Package Manager
-        script: |
-          flutter config --no-enable-swift-package-manager

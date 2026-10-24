@@ -47,3 +47,6 @@ workflows:
         notify:
           success: true
           failure: true
+                - name: Disable Swift Package Manager
+        script: |
+          flutter config --no-enable-swift-package-manager

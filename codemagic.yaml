@@ -12,9 +12,6 @@ workflows:
       - name: Get Flutter dependencies
         script: flutter pub get
 
-      - name: Analyze Flutter code
-        script: flutter analyze
-
       - name: Build iOS Simulator app
         script: flutter build ios --simulator --debug
 

@@ -13,16 +13,19 @@ workflows:
         script: |
           flutter --version
           xcodebuild -version
+          pod --version
 
       - name: Clean Flutter build
         script: |
           flutter clean
           flutter pub get
 
-      - name: Install iOS dependencies
+      - name: Reinstall iOS dependencies
         script: |
           cd ios
-          pod install
+          pod deintegrate
+          rm -rf Pods
+          pod install --repo-update
           cd ..
 
       - name: Build iOS Simulator app
@@ -44,8 +47,14 @@ workflows:
       xcode: latest
 
     scripts:
-      - name: Get Flutter dependencies
+      - name: Show build environment
         script: |
+          flutter --version
+          xcodebuild -version
+
+      - name: Clean Flutter build
+        script: |
+          flutter clean
           flutter pub get
 
       - name: Install iOS dependencies
@@ -56,8 +65,10 @@ workflows:
 
       - name: Build iOS IPA
         script: |
-          flutter build ipa --release
+          set -o pipefail
+          flutter build ipa --release -v 2>&1 | tee /tmp/ios-release-build.log
 
     artifacts:
       - build/ios/ipa/*.ipa
+      - /tmp/ios-release-build.log
       - /tmp/xcodebuild_logs/*.log

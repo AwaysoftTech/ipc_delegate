@@ -1,39 +1,69 @@
+
 workflows:
   ios-simulator-build:
     name: iOS Simulator Build
     max_build_duration: 60
     instance_type: mac_mini_m2
+
     environment:
       flutter: stable
-      xcode: 16.4
+      xcode: 26.1.1
       cocoapods: default
+
     triggering:
       events:
         - push
       branch_patterns:
         - pattern: main
           include: true
-          source: true
+
     scripts:
+      - name: Check Build Environment
+        script: |
+          echo "===== XCODE VERSION ====="
+          xcodebuild -version
+
+          echo "===== SELECTED XCODE ====="
+          xcode-select -p
+
+          echo "===== IOS SDK VERSION ====="
+          xcrun --sdk iphoneos --show-sdk-version
+
+          echo "===== FLUTTER VERSION ====="
+          flutter --version
+
       - name: Disable Swift Package Manager
         script: |
           flutter config --no-enable-swift-package-manager
-      - name: Get Flutter packages
+
+      - name: Get Flutter Packages
         script: |
-          flutter packages pub get
-      - name: Install CocoaPods dependencies
+          flutter clean
+          flutter pub get
+
+      - name: Check Connectivity Dependency
         script: |
-          find . -name "Podfile" -execdir pod install \;
-      - name: Build iOS app for simulator
+          flutter pub deps --style=compact | grep connectivity_plus
+
+      - name: Install CocoaPods Dependencies
+        script: |
+          cd ios
+          pod install
+          cd ..
+
+      - name: Build iOS Simulator
         script: |
           flutter build ios --simulator --debug -v
-      - name: Zip simulator app
+
+      - name: Zip Simulator App
         script: |
           cd build/ios/iphonesimulator
           zip -r Runner-simulator.zip Runner.app
+
     artifacts:
       - build/ios/iphonesimulator/*.app
       - build/ios/iphonesimulator/Runner-simulator.zip
+
     publishing:
       email:
         recipients:

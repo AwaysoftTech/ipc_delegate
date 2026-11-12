@@ -28,16 +28,13 @@ require File.expand_path(File.join('packages', 'flutter_tools', 'bin', 'podhelpe
 flutter_ios_podfile_setup
 
 target 'Runner' do
-  use_frameworks!
+  use_frameworks! :linkage => :static
   use_modular_headers!
 
   flutter_install_all_ios_pods File.dirname(File.realpath(__FILE__))
 
-  # Update GTMSessionFetcher to a version that satisfies both requirements
-  pod 'GTMSessionFetcher', '~> 3.4.0'
-
-  # Specify GoogleSignIn version
-  # pod 'GoogleSignIn', '~> 7.1'
+  # Firebase and plugins manage their dependencies automatically.
+  # Static linkage is required for modern Firebase SDKs.
 end
 
 post_install do |installer|

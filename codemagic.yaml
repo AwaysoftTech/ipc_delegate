@@ -1,74 +1,42 @@
-
 workflows:
-  ios-simulator:
-    name: Flutter iOS Simulator Build
+  ios-simulator-build:
+    name: iOS Simulator Build
     max_build_duration: 60
-
+    instance_type: mac_mini_m2
     environment:
       flutter: stable
-      xcode: latest
-
+      xcode: 16.4
+      cocoapods: default
+    triggering:
+      events:
+        - push
+      branch_patterns:
+        - pattern: main
+          include: true
     scripts:
-      - name: Show build environment
+      - name: Disable Swift Package Manager
         script: |
-          flutter --version
-          xcodebuild -version
-          pod --version
-
-      - name: Clean Flutter build
+          flutter config --no-enable-swift-package-manager
+      - name: Get Flutter packages
         script: |
-          flutter clean
-          flutter pub get
-
-      - name: Reinstall iOS dependencies
+          flutter packages pub get
+      - name: Install CocoaPods dependencies
         script: |
-          cd ios
-          pod deintegrate
-          rm -rf Pods
-          pod install --repo-update
-          cd ..
-
-      - name: Build iOS Simulator app
+          find . -name "Podfile" -execdir pod install \;
+      - name: Build iOS app for simulator
         script: |
-          set -o pipefail
-          flutter build ios --simulator --debug -v 2>&1 | tee /tmp/ios-simulator-build.log
-
+          flutter build ios --simulator --debug -v
+      - name: Zip simulator app
+        script: |
+          cd build/ios/iphonesimulator
+          zip -r Runner-simulator.zip Runner.app
     artifacts:
       - build/ios/iphonesimulator/*.app
-      - /tmp/ios-simulator-build.log
-      - /tmp/xcodebuild_logs/*.log
-
-  ios-release:
-    name: Flutter iOS Release IPA
-    max_build_duration: 60
-
-    environment:
-      flutter: stable
-      xcode: latest
-
-    scripts:
-      - name: Show build environment
-        script: |
-          flutter --version
-          xcodebuild -version
-
-      - name: Clean Flutter build
-        script: |
-          flutter clean
-          flutter pub get
-
-      - name: Install iOS dependencies
-        script: |
-          cd ios
-          pod install
-          cd ..
-
-      - name: Build iOS IPA
-        script: |
-          set -o pipefail
-          flutter build ipa --release -v 2>&1 | tee /tmp/ios-release-build.log
-
-    artifacts:
-      - build/ios/ipa/*.ipa
-      - /tmp/ios-release-build.log
-      - /tmp/xcodebuild_logs/*.log
+      - build/ios/iphonesimulator/Runner-simulator.zip
+    publishing:
+      email:
+        recipients:
+          - awaysofttech@gmail.com
+        notify:
+          success: true
+          failure: true

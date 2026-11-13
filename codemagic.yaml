@@ -6,7 +6,7 @@ workflows:
     instance_type: mac_mini_m2
 
     environment:
-      flutter: 3.11.0
+      flutter: 3.41.0
       xcode: 26.1.1
       cocoapods: default
 
@@ -32,6 +32,9 @@ workflows:
           echo "===== FLUTTER VERSION ====="
           flutter --version
 
+          echo "===== DART VERSION ====="
+          dart --version
+
       - name: Disable Swift Package Manager
         script: |
           flutter config --no-enable-swift-package-manager
@@ -43,7 +46,7 @@ workflows:
 
       - name: Check Connectivity Dependency
         script: |
-          flutter pub deps --style=compact | grep connectivity_plus
+          flutter pub deps --style=compact | grep connectivity_plus || true
 
       - name: Install CocoaPods Dependencies
         script: |

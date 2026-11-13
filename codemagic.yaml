@@ -1,13 +1,13 @@
 
 workflows:
   ios-simulator-build:
-    name: IPC Delegate - iOS Simulator
-    max_build_duration: 120
+    name: iOS Simulator Build
+    max_build_duration: 60
     instance_type: mac_mini_m2
 
     environment:
       flutter: 3.11.0
-      xcode: latest
+      xcode: 26.1.1
       cocoapods: default
 
     triggering:
@@ -16,32 +16,36 @@ workflows:
       branch_patterns:
         - pattern: main
           include: true
-          source: true
 
     scripts:
       - name: Check Build Environment
         script: |
-          flutter --version
-          dart --version
+          echo "===== XCODE VERSION ====="
           xcodebuild -version
-          pod --version
 
-      - name: Clean Flutter Project
+          echo "===== SELECTED XCODE ====="
+          xcode-select -p
+
+          echo "===== IOS SDK VERSION ====="
+          xcrun --sdk iphoneos --show-sdk-version
+
+          echo "===== FLUTTER VERSION ====="
+          flutter --version
+
+      - name: Disable Swift Package Manager
+        script: |
+          flutter config --no-enable-swift-package-manager
+
+      - name: Get Flutter Packages
         script: |
           flutter clean
-
-      - name: Get Flutter Dependencies
-        script: |
           flutter pub get
 
-      - name: Check Firebase Configuration
+      - name: Check Connectivity Dependency
         script: |
-          if [ ! -f ios/Runner/GoogleService-Info.plist ]; then
-            echo "WARNING: GoogleService-Info.plist not found"
-            echo "Check Firebase iOS configuration."
-          fi
+          flutter pub deps --style=compact | grep connectivity_plus
 
-      - name: Install iOS Dependencies
+      - name: Install CocoaPods Dependencies
         script: |
           cd ios
           pod install
@@ -49,20 +53,21 @@ workflows:
 
       - name: Build iOS Simulator
         script: |
-          flutter build ios \
-            --simulator \
-            --debug \
-            --verbose
+          flutter build ios --simulator --debug -v
+
+      - name: Zip Simulator App
+        script: |
+          cd build/ios/iphonesimulator
+          zip -r Runner-simulator.zip Runner.app
 
     artifacts:
       - build/ios/iphonesimulator/*.app
-      - /tmp/xcodebuild_logs/*.log
-      - flutter_drive.log
+      - build/ios/iphonesimulator/Runner-simulator.zip
 
-publishing:
-  email:
-    recipients:
-      - contact@awaysofttech.com
-    notify:
-      success: true
-      failure: true
+    publishing:
+      email:
+        recipients:
+          - awaysofttech@gmail.com
+        notify:
+          success: true
+          failure: true

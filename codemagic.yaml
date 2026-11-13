@@ -1,42 +1,66 @@
+
 workflows:
   ios-simulator-build:
-    name: iOS Simulator Build
-    max_build_duration: 60
+    name: IPC Delegate - iOS Simulator
+    max_build_duration: 120
     instance_type: mac_mini_m2
+
     environment:
-      flutter: stable
-      xcode: 26.1.1
+      flutter: 3.11.0
+      xcode: latest
       cocoapods: default
+
     triggering:
       events:
         - push
       branch_patterns:
         - pattern: main
           include: true
+          source: true
+
     scripts:
-      - name: Disable Swift Package Manager
+      - name: Check Build Environment
         script: |
-          flutter config --no-enable-swift-package-manager
-      - name: Get Flutter packages
+          flutter --version
+          dart --version
+          xcodebuild -version
+          pod --version
+
+      - name: Clean Flutter Project
         script: |
-          flutter packages pub get
-      - name: Install CocoaPods dependencies
+          flutter clean
+
+      - name: Get Flutter Dependencies
         script: |
-          find . -name "Podfile" -execdir pod install \;
-      - name: Build iOS app for simulator
+          flutter pub get
+
+      - name: Check Firebase Configuration
         script: |
-          flutter build ios --simulator --debug -v
-      - name: Zip simulator app
+          if [ ! -f ios/Runner/GoogleService-Info.plist ]; then
+            echo "WARNING: GoogleService-Info.plist not found"
+            echo "Check Firebase iOS configuration."
+          fi
+
+      - name: Install iOS Dependencies
         script: |
-          cd build/ios/iphonesimulator
-          zip -r Runner-simulator.zip Runner.app
+          cd ios
+          pod install
+          cd ..
+
+      - name: Build iOS Simulator
+        script: |
+          flutter build ios \
+            --simulator \
+            --debug \
+            --verbose
+
     artifacts:
       - build/ios/iphonesimulator/*.app
-      - build/ios/iphonesimulator/Runner-simulator.zip
+      - /tmp/xcodebuild_logs/*.log
+      - flutter_drive.log
+
     publishing:
       email:
-        recipients:
-          - awaysofttech@gmail.com
         notify:
           success: true
           failure: true

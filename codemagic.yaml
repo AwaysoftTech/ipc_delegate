@@ -59,8 +59,10 @@ workflows:
       - /tmp/xcodebuild_logs/*.log
       - flutter_drive.log
 
-    publishing:
-      email:
-        notify:
-          success: true
-          failure: true
+publishing:
+  email:
+    recipients:
+      - contact@awaysofttech.com
+    notify:
+      success: true
+      failure: true

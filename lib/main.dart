@@ -1,3 +1,4 @@
+
 import 'package:flutter/material.dart';
 
 void main() {
@@ -5,37 +6,34 @@ void main() {
 
   debugPrint('TEST 1: Flutter initialized');
 
-  runApp(const RenderTestApp());
-}
-
-class RenderTestApp extends StatelessWidget {
-  const RenderTestApp({super.key});
-
-  @override
-  Widget build(BuildContext context) {
-    debugPrint('TEST 2: Widget build');
-
-    return const MaterialApp(
-      debugShowCheckedModeBanner: false,
-      home: Scaffold(
-        backgroundColor: Colors.red,
-        body: Center(
-          child: ColoredBox(
-            color: Colors.yellow,
-            child: Padding(
-              padding: EdgeInsets.all(30),
-              child: Text(
-                'FLUTTER RENDER TEST',
-                style: TextStyle(
-                  color: Colors.black,
-                  fontSize: 28,
-                  fontWeight: FontWeight.bold,
-                ),
+  runApp(
+    const ColoredBox(
+      color: Colors.red,
+      child: Center(
+        child: ColoredBox(
+          color: Colors.yellow,
+          child: Padding(
+            padding: EdgeInsets.all(30),
+            child: Text(
+              'FLUTTER RENDERING WORKING',
+              style: TextStyle(
+                fontSize: 26,
+                color: Colors.black,
+                fontWeight: FontWeight.bold,
               ),
             ),
           ),
         ),
       ),
-    );
-  }
+    ),
+  );
+
+  WidgetsBinding.instance.addPostFrameCallback((_) {
+    debugPrint('TEST 3: FIRST FRAME COMPLETED');
+
+    for (final view in WidgetsBinding.instance.platformDispatcher.views) {
+      debugPrint('VIEW SIZE: ${view.physicalSize}');
+      debugPrint('DEVICE PIXEL RATIO: ${view.devicePixelRatio}');
+    }
+  });
 }

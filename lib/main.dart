@@ -1,29 +1,14 @@
+
 import 'package:flutter/material.dart';
-import 'package:firebase_core/firebase_core.dart';
-import 'package:firebase_messaging/firebase_messaging.dart';
 
-import 'firebase_options.dart';
-
-Future<void> main() async {
+void main() {
   WidgetsFlutterBinding.ensureInitialized();
 
   debugPrint('STEP 1: Flutter initialized');
 
-  try {
-    await Firebase.initializeApp(
-      options: DefaultFirebaseOptions.currentPlatform,
-    );
-
-    debugPrint('STEP 2: Firebase initialized');
-
-  } catch (e, stack) {
-    debugPrint('FIREBASE INITIALIZATION ERROR: $e');
-    debugPrint('$stack');
-  }
-
   runApp(const MyApp());
 
-  debugPrint('STEP 3: runApp executed');
+  debugPrint('STEP 2: runApp executed');
 }
 
 class MyApp extends StatelessWidget {
@@ -31,7 +16,7 @@ class MyApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    debugPrint('STEP 4: MyApp build executed');
+    debugPrint('STEP 3: MyApp build executed');
 
     return const MaterialApp(
       debugShowCheckedModeBanner: false,
@@ -42,7 +27,7 @@ class MyApp extends StatelessWidget {
             'IPC DELEGATE RUNNING',
             style: TextStyle(
               fontSize: 26,
-              color: Colors.black,
+              color: Colors.red,
               fontWeight: FontWeight.bold,
             ),
           ),

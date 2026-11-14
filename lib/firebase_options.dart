@@ -58,12 +58,11 @@ class DefaultFirebaseOptions {
   );
 
   static const FirebaseOptions ios = FirebaseOptions(
-    apiKey: 'AIzaSyDfVBjFEDlfD8m6peYcmuOcf3yLxrU3tIY',
-    appId: '1:247392275240:android:5ac219ce9ec4b9baf71e1d',
+    apiKey: 'AIzaSyCb7l6303MCI8lb7fSrSSNxRPhfX49eH1s',
+    appId: '1:247392275240:ios:21584d9c1107df2ff71e1d',
     messagingSenderId: '247392275240',
     projectId: 'ipc-attendee',
     storageBucket: 'ipc-attendee.firebasestorage.app',
-    androidClientId: '63168540332-bf5kqt19bbbq0ub3quibe67tfi7hjc1v.apps.googleusercontent.com',
     iosClientId: '63168540332-b8snl3ggfeaosrq8acqc11npalhouus5.apps.googleusercontent.com',
     iosBundleId: 'com.ipc.delegates',
   );

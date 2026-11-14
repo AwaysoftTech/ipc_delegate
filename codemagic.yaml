@@ -1,37 +1,104 @@
+
 workflows:
   ios-simulator-build:
     name: iOS Simulator Build
     max_build_duration: 60
     instance_type: mac_mini_m2
+
     environment:
       flutter: stable
       xcode: 26.2.0
       cocoapods: default
+
     triggering:
       events:
         - push
       branch_patterns:
         - pattern: main
           include: true
+
     scripts:
       - name: Disable Swift Package Manager
         script: |
           flutter config --no-enable-swift-package-manager
-      - name: Get Flutter packages
-        script: |
-          flutter packages pub get
-      - name: Install CocoaPods dependencies
-        script: |
-          find . -name "Podfile" -execdir pod install \;
 
-      - name: Check Firebase iOS Configuration
+      - name: Clean Flutter Project
         script: |
-          if [ -f ios/Runner/GoogleService-Info.plist ]; then
-            echo "Firebase iOS configuration found"
-          else
-            echo "ERROR: GoogleService-Info.plist missing"
+          flutter clean
+
+      - name: Get Flutter Packages
+        script: |
+          flutter pub get
+
+      - name: Verify Firebase Configuration
+        script: |
+          set -e
+
+          PLIST="ios/Runner/GoogleService-Info.plist"
+
+          if [ ! -f "$PLIST" ]; then
+            echo "ERROR: GoogleService-Info.plist not found!"
             exit 1
           fi
+
+          plutil -lint "$PLIST"
+
+          FIREBASE_BUNDLE_ID=$(/usr/libexec/PlistBuddy \
+            -c "Print :BUNDLE_ID" "$PLIST")
+
+          echo "Firebase Bundle ID: $FIREBASE_BUNDLE_ID"
+
+          if [ "$FIREBASE_BUNDLE_ID" != "com.ipc.delegates" ]; then
+            echo "ERROR: Firebase Bundle ID mismatch!"
+            exit 1
+          fi
+
+          if [ ! -f "lib/firebase_options.dart" ]; then
+            echo "ERROR: firebase_options.dart not found!"
+            exit 1
+          fi
+
+          echo "Firebase configuration verified."
+
+      - name: Install CocoaPods Dependencies
+        script: |
+          cd ios
+          pod install
+          cd ..
+
+      - name: Add Firebase Plist to Runner Target
+        script: |
+          ruby <<'RUBY'
+          require 'xcodeproj'
+
+          project_path = 'ios/Runner.xcodeproj'
+          project = Xcodeproj::Project.open(project_path)
+
+          target = project.targets.find { |t| t.name == 'Runner' }
+
+          abort 'ERROR: Runner target not found!' unless target
+
+          runner_group = project.main_group.find_subpath('Runner', true)
+
+          file_ref = runner_group.files.find do |file|
+            file.path == 'GoogleService-Info.plist'
+          end
+
+          file_ref ||= runner_group.new_file('GoogleService-Info.plist')
+
+          resources = target.resources_build_phase
+
+          unless resources.files_references.include?(file_ref)
+            resources.add_file_reference(file_ref, true)
+            puts 'Added GoogleService-Info.plist to Runner resources.'
+          else
+            puts 'GoogleService-Info.plist already registered.'
+          end
+
+          project.save
+          puts 'Runner Xcode project updated successfully.'
+          RUBY
+
       - name: Fix Swift Bridging Header Configuration
         script: |
           ruby <<'RUBY'
@@ -61,16 +128,55 @@ workflows:
             puts "Updated: #{project_path}"
           end
           RUBY
-      - name: Build iOS app for simulator
+
+      - name: Build iOS App for Simulator
         script: |
           flutter build ios --simulator --debug -v
-      - name: Zip simulator app
+
+      - name: Verify Firebase in Built App
+        script: |
+          set -e
+
+          APP_PATH="build/ios/iphonesimulator/Runner.app"
+          PLIST="$APP_PATH/GoogleService-Info.plist"
+
+          if [ ! -d "$APP_PATH" ]; then
+            echo "ERROR: Runner.app not found!"
+            exit 1
+          fi
+
+          if [ ! -f "$PLIST" ]; then
+            echo "ERROR: Firebase plist missing from Runner.app!"
+            exit 1
+          fi
+
+          plutil -lint "$PLIST"
+
+          FIREBASE_BUNDLE_ID=$(/usr/libexec/PlistBuddy \
+            -c "Print :BUNDLE_ID" "$PLIST")
+
+          APP_BUNDLE_ID=$(/usr/libexec/PlistBuddy \
+            -c "Print :CFBundleIdentifier" "$APP_PATH/Info.plist")
+
+          echo "Firebase Bundle ID: $FIREBASE_BUNDLE_ID"
+          echo "App Bundle ID: $APP_BUNDLE_ID"
+
+          if [ "$FIREBASE_BUNDLE_ID" != "$APP_BUNDLE_ID" ]; then
+            echo "ERROR: App and Firebase Bundle IDs do not match!"
+            exit 1
+          fi
+
+          echo "SUCCESS: Firebase plist included in Runner.app."
+
+      - name: Zip Simulator App
         script: |
           cd build/ios/iphonesimulator
-          zip -r Runner-simulator.zip Runner.app
+          ditto -c -k --sequesterRsrc --keepParent Runner.app Runner-simulator.zip
+
     artifacts:
-      - build/ios/iphonesimulator/*.app
+      - build/ios/iphonesimulator/Runner.app
       - build/ios/iphonesimulator/Runner-simulator.zip
+
     publishing:
       email:
         recipients:

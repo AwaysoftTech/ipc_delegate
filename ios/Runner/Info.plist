@@ -88,5 +88,8 @@
     <key>UIMainStoryboardFile</key>
     <string>Main</string>
 
+    <key>FLTEnableImpeller</key>
+    <false/>
+
 </dict>
 </plist>

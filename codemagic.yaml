@@ -129,9 +129,17 @@ workflows:
           end
           RUBY
 
-      - name: Build iOS App for Simulator
+      - name: Build iOS Simulator
         script: |
-          flutter build ios --simulator --debug -v
+          flutter clean
+          flutter pub get
+
+          flutter build ios \
+            --simulator \
+            --debug \
+            --no-codesign \
+            --no-enable-impeller \
+            -v
 
       - name: Verify Firebase in Built App
         script: |

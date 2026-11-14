@@ -1,7 +1,5 @@
 import Flutter
 import UIKit
-import FirebaseCore
-import FirebaseMessaging
 
 @main
 @objc class AppDelegate: FlutterAppDelegate {
@@ -12,11 +10,19 @@ import FirebaseMessaging
             [UIApplication.LaunchOptionsKey: Any]?
     ) -> Bool {
 
+        print("IOS STEP 1: AppDelegate launched")
+
         GeneratedPluginRegistrant.register(with: self)
 
-        return super.application(
+        print("IOS STEP 2: Plugins registered")
+
+        let result = super.application(
             application,
             didFinishLaunchingWithOptions: launchOptions
         )
+
+        print("IOS STEP 3: Application launch completed")
+
+        return result
     }
 }

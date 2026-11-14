@@ -24,6 +24,14 @@ workflows:
         script: |
           find . -name "Podfile" -execdir pod install \;
 
+      - name: Check Firebase iOS Configuration
+        script: |
+          if [ -f ios/Runner/GoogleService-Info.plist ]; then
+            echo "Firebase iOS configuration found"
+          else
+            echo "ERROR: GoogleService-Info.plist missing"
+            exit 1
+          fi
       - name: Fix Swift Bridging Header Configuration
         script: |
           ruby <<'RUBY'

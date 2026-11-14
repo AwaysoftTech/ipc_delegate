@@ -51,8 +51,10 @@ Future<void> main() async {
     options: DefaultFirebaseOptions.currentPlatform,
   );
 
-  debugPrint('STEP 2: Firebase initialized');
-  debugPrint('Firebase apps: ${Firebase.apps.length}');
+  debugPrint('FIREBASE APP COUNT: ${Firebase.apps.length}');
+  debugPrint('FIREBASE APP NAME: ${Firebase.app().name}');
+  debugPrint('FIREBASE PROJECT: ${Firebase.app().options.projectId}');
+  debugPrint('FIREBASE APP ID: ${Firebase.app().options.appId}');
 
   // Register Firebase Messaging background handler
   if (!kIsWeb) {
@@ -81,7 +83,25 @@ Future<void> main() async {
 
   debugPrint('STEP 6: Calling runApp');
 
-  runApp(MyApp(languages: languages));
+  //runApp(MyApp(languages: languages));
+
+  runApp(
+    const GetMaterialApp(
+      debugShowCheckedModeBanner: false,
+      home: Scaffold(
+        backgroundColor: Colors.white,
+        body: Center(
+          child: Text(
+            'Flutter UI Working',
+            style: TextStyle(
+              color: Colors.black,
+              fontSize: 24,
+            ),
+          ),
+        ),
+      ),
+    ),
+  );
 
   debugPrint('STEP 3: runApp executed');
 }

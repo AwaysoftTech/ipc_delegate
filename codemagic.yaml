@@ -131,7 +131,12 @@ workflows:
 
       - name: Build iOS App for Simulator
         script: |
-          flutter build ios --simulator --debug -v
+            flutter build ios \
+              --simulator \
+              --debug \
+              --no-codesign \
+              --no-enable-impeller \
+              -v
 
       - name: Verify Firebase in Built App
         script: |

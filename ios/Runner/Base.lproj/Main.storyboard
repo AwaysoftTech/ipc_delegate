@@ -11,8 +11,6 @@
                 <viewController
                     id="BYZ-38-t0r"
                     customClass="FlutterViewController"
-                    customModule="Flutter"
-                    customModuleProvider="target"
                     sceneMemberID="viewController">
 
                     <layoutGuides>

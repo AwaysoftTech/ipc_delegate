@@ -1,34 +1,37 @@
-
 import 'package:flutter/material.dart';
 
 void main() {
   WidgetsFlutterBinding.ensureInitialized();
 
-  debugPrint('STEP 1: Flutter initialized');
+  debugPrint('TEST 1: Flutter initialized');
 
-  runApp(const MyApp());
-
-  debugPrint('STEP 2: runApp executed');
+  runApp(const RenderTestApp());
 }
 
-class MyApp extends StatelessWidget {
-  const MyApp({super.key});
+class RenderTestApp extends StatelessWidget {
+  const RenderTestApp({super.key});
 
   @override
   Widget build(BuildContext context) {
-    debugPrint('STEP 3: MyApp build executed');
+    debugPrint('TEST 2: Widget build');
 
     return const MaterialApp(
       debugShowCheckedModeBanner: false,
       home: Scaffold(
-        backgroundColor: Colors.white,
+        backgroundColor: Colors.red,
         body: Center(
-          child: Text(
-            'IPC DELEGATE RUNNING',
-            style: TextStyle(
-              fontSize: 26,
-              color: Colors.red,
-              fontWeight: FontWeight.bold,
+          child: ColoredBox(
+            color: Colors.yellow,
+            child: Padding(
+              padding: EdgeInsets.all(30),
+              child: Text(
+                'FLUTTER RENDER TEST',
+                style: TextStyle(
+                  color: Colors.black,
+                  fontSize: 28,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
             ),
           ),
         ),

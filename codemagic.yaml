@@ -129,14 +129,14 @@ workflows:
           end
           RUBY
 
+      - name: Check Flutter Version
+        script: |
+          flutter --version
+          flutter build ios --help
+
       - name: Build iOS App for Simulator
         script: |
-            flutter build ios \
-              --simulator \
-              --debug \
-              --no-codesign \
-              --no-enable-impeller \
-              -v
+          flutter build ios --simulator --debug --no-codesign -v
 
       - name: Verify Firebase in Built App
         script: |

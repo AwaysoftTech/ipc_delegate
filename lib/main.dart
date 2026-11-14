@@ -1,4 +1,5 @@
 import 'dart:io';
+import 'dart:ui';
 
 import 'package:flutter/material.dart';
 import 'package:flutter/foundation.dart' show kIsWeb;
@@ -31,10 +32,27 @@ Future<void> firebaseMessagingBackgroundHandler(
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
+  FlutterError.onError = (details) {
+    FlutterError.presentError(details);
+    debugPrint('FLUTTER ERROR: ${details.exception}');
+    debugPrint('${details.stack}');
+  };
+
+  PlatformDispatcher.instance.onError = (error, stack) {
+    debugPrint('PLATFORM ERROR: $error');
+    debugPrint('$stack');
+    return true;
+  };
+
+  debugPrint('STEP 1: Flutter started');
+
   // Initialize Firebase
   await Firebase.initializeApp(
     options: DefaultFirebaseOptions.currentPlatform,
   );
+
+  debugPrint('STEP 2: Firebase initialized');
+  debugPrint('Firebase apps: ${Firebase.apps.length}');
 
   // Register Firebase Messaging background handler
   if (!kIsWeb) {
@@ -43,16 +61,29 @@ Future<void> main() async {
     );
   }
 
+  debugPrint('STEP 3: Initializing SharedPreferences');
+
   final sharedPreferences = await SharedPreferences.getInstance();
 
-  Get.lazyPut(() => sharedPreferences);
+  Get.put<SharedPreferences>(
+    sharedPreferences,
+    permanent: true,
+  );
 
-  Map<String, Map<String, String>> languages =
-  await services.init();
+  debugPrint('STEP 4: Initializing services');
+
+  final languages = await services.init();
+
+  debugPrint('STEP 5: Services initialized');
+  debugPrint('Languages loaded: ${languages.length}');
 
   HttpOverrides.global = MyHttpOverrides();
 
+  debugPrint('STEP 6: Calling runApp');
+
   runApp(MyApp(languages: languages));
+
+  debugPrint('STEP 3: runApp executed');
 }
 
 class MyHttpOverrides extends HttpOverrides {

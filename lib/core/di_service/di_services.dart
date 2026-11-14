@@ -35,14 +35,16 @@ import 'package:ipc_delegates/data/repo/privacy/privacy_repo.dart';
 import 'package:ipc_delegates/data/controller/session_quiz/session_quiz_controller.dart';
 import 'package:ipc_delegates/data/repo/session_quiz/session_quiz_repo.dart';
 
-Future<Map<String, Map<String, String>>> init() async
-{
-  /// Core
-  final sharedPreferences = await SharedPreferences.getInstance();
-  Get.lazyPut(() => sharedPreferences);
-  Get.lazyPut(() => ApiClient(sharedPreferences: Get.find()));
 
-  /// Repository
+Future<Map<String, Map<String, String>>> init() async {
+  // Core
+  final sharedPreferences = Get.find<SharedPreferences>();
+
+  Get.lazyPut(
+        () => ApiClient(sharedPreferences: Get.find()),
+  );
+
+  // Repositories
   Get.lazyPut(() => SplashRepo(apiClient: Get.find()));
   Get.lazyPut(() => LoginRepo(apiClient: Get.find()));
   Get.lazyPut(() => VerifyOtpRepo(apiClient: Get.find()));
@@ -56,12 +58,24 @@ Future<Map<String, Map<String, String>>> init() async
   Get.lazyPut(() => SpeakerRepo(apiClient: Get.find()));
   Get.lazyPut(() => SessionQuizRepo(apiClient: Get.find()));
 
-  Get.lazyPut(() => SplashController(splashRepo: Get.find(), localizationController: Get.find()));
+  // Controllers
+  Get.lazyPut(() => LocalizationController(
+    sharedPreferences: sharedPreferences,
+  ));
+
+  Get.lazyPut(() => ThemeController(
+    sharedPreferences: sharedPreferences,
+  ));
+
+  Get.lazyPut(() => SplashController(
+    splashRepo: Get.find(),
+    localizationController: Get.find(),
+  ));
+
   Get.lazyPut(() => LoginController(loginRepo: Get.find()));
   Get.lazyPut(() => VerifyOtpController(verifyOtpRepo: Get.find()));
   Get.lazyPut(() => DashboardController(dashboardRepo: Get.find()));
   Get.lazyPut(() => ProfileController(profileRepo: Get.find()));
-  Get.lazyPut(() => LocalizationController(sharedPreferences: Get.find()));
   Get.lazyPut(() => PrivacyController(privacyRepo: Get.find()));
   Get.lazyPut(() => EventAreaController(eventAreaRepo: Get.find()));
   Get.lazyPut(() => EventSessionController(eventSessionRepo: Get.find()));
@@ -69,10 +83,9 @@ Future<Map<String, Map<String, String>>> init() async
   Get.lazyPut(() => NotificationController(notificationRepo: Get.find()));
   Get.lazyPut(() => SpeakerController(speakerRepo: Get.find()));
   Get.lazyPut(() => SessionQuizController(sessionQuizRepo: Get.find()));
-  Get.lazyPut(() => ThemeController(sharedPreferences: Get.find()));
 
-  Map<String, Map<String, String>> language = {};
-  language['en_US'] = {'': ''};
-
-  return language;
+  return {
+    'en_US': {'': ''},
+  };
 }
+

@@ -83,7 +83,7 @@
     <true/>
 
     <key>FirebaseMessagingAutoInitEnabled</key>
-    <false/>
+    <true/>
 
     <key>UIMainStoryboardFile</key>
     <string>Main</string>

@@ -19,16 +19,6 @@ import 'package:ipc_delegates/core/route/route.dart';
 import 'core/di_service/di_services.dart' as services;
 import 'firebase_options.dart';
 
-@pragma('vm:entry-point')
-Future<void> firebaseMessagingBackgroundHandler(
-    RemoteMessage message) async {
-  await Firebase.initializeApp(
-    options: DefaultFirebaseOptions.currentPlatform,
-  );
-
-  debugPrint('Background message: ${message.messageId}');
-}
-
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
@@ -83,27 +73,19 @@ Future<void> main() async {
 
   debugPrint('STEP 6: Calling runApp');
 
-  //runApp(MyApp(languages: languages));
-
-  runApp(
-    const GetMaterialApp(
-      debugShowCheckedModeBanner: false,
-      home: Scaffold(
-        backgroundColor: Colors.white,
-        body: Center(
-          child: Text(
-            'Flutter UI Working',
-            style: TextStyle(
-              color: Colors.black,
-              fontSize: 24,
-            ),
-          ),
-        ),
-      ),
-    ),
-  );
+  runApp(MyApp(languages: languages));
 
   debugPrint('STEP 3: runApp executed');
+}
+
+@pragma('vm:entry-point')
+Future<void> firebaseMessagingBackgroundHandler(
+    RemoteMessage message) async {
+  await Firebase.initializeApp(
+    options: DefaultFirebaseOptions.currentPlatform,
+  );
+
+  debugPrint('Background message: ${message.messageId}');
 }
 
 class MyHttpOverrides extends HttpOverrides {

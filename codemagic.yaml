@@ -18,14 +18,13 @@ workflows:
           include: true
 
     scripts:
-      - name: Configure Flutter
+      - name: Disable Swift Package Manager
         script: |
           flutter config --no-enable-swift-package-manager
 
       - name: Clean Flutter Project
         script: |
           flutter clean
-          rm -rf build/ios
 
       - name: Get Flutter Packages
         script: |
@@ -37,10 +36,10 @@ workflows:
 
           PLIST="ios/Runner/GoogleService-Info.plist"
 
-          test -f "$PLIST" || {
+          if [ ! -f "$PLIST" ]; then
             echo "ERROR: GoogleService-Info.plist not found!"
             exit 1
-          }
+          fi
 
           plutil -lint "$PLIST"
 
@@ -54,10 +53,12 @@ workflows:
             exit 1
           fi
 
-          test -f lib/firebase_options.dart || {
+          if [ ! -f "lib/firebase_options.dart" ]; then
             echo "ERROR: firebase_options.dart not found!"
             exit 1
-          }
+          fi
+
+          echo "Firebase configuration verified."
 
       - name: Install CocoaPods Dependencies
         script: |
@@ -70,25 +71,32 @@ workflows:
           ruby <<'RUBY'
           require 'xcodeproj'
 
-          project = Xcodeproj::Project.open('ios/Runner.xcodeproj')
+          project_path = 'ios/Runner.xcodeproj'
+          project = Xcodeproj::Project.open(project_path)
+
           target = project.targets.find { |t| t.name == 'Runner' }
 
-          abort 'Runner target not found!' unless target
+          abort 'ERROR: Runner target not found!' unless target
 
-          group = project.main_group.find_subpath('Runner', true)
+          runner_group = project.main_group.find_subpath('Runner', true)
 
-          file_ref = group.files.find do |file|
+          file_ref = runner_group.files.find do |file|
             file.path == 'GoogleService-Info.plist'
           end
 
-          file_ref ||= group.new_file('GoogleService-Info.plist')
+          file_ref ||= runner_group.new_file('GoogleService-Info.plist')
 
-          unless target.resources_build_phase.files_references.include?(file_ref)
-            target.resources_build_phase.add_file_reference(file_ref, true)
+          resources = target.resources_build_phase
+
+          unless resources.files_references.include?(file_ref)
+            resources.add_file_reference(file_ref, true)
+            puts 'Added GoogleService-Info.plist to Runner resources.'
+          else
+            puts 'GoogleService-Info.plist already registered.'
           end
 
           project.save
-          puts 'Firebase plist registered.'
+          puts 'Runner Xcode project updated successfully.'
           RUBY
 
       - name: Fix Swift Bridging Header Configuration
@@ -96,91 +104,105 @@ workflows:
           ruby <<'RUBY'
           require 'xcodeproj'
 
-          [
+          projects = [
             'ios/Runner.xcodeproj',
             'ios/Pods/Pods.xcodeproj'
-          ].each do |path|
-            next unless File.exist?(path)
+          ]
 
-            project = Xcodeproj::Project.open(path)
+          projects.each do |project_path|
+            next unless File.exist?(project_path)
+
+            project = Xcodeproj::Project.open(project_path)
 
             project.build_configurations.each do |config|
               config.build_settings['BUILD_LIBRARY_FOR_DISTRIBUTION'] = 'NO'
-              config.build_settings['SWIFT_EMIT_MODULE_INTERFACE'] = 'NO'
             end
 
             project.targets.each do |target|
               target.build_configurations.each do |config|
                 config.build_settings['BUILD_LIBRARY_FOR_DISTRIBUTION'] = 'NO'
-                config.build_settings['SWIFT_EMIT_MODULE_INTERFACE'] = 'NO'
               end
             end
 
             project.save
-            puts "Updated #{path}"
+            puts "Updated: #{project_path}"
           end
           RUBY
 
-      - name: Build and Create Simulator ZIP
+      - name: Fix Swift Module Interface Configuration
         script: |
-          echo "===== STARTING SIMULATOR BUILD ====="
+          echo "Checking Swift build settings..."
 
+          PROJECT_FILE="ios/Runner.xcodeproj/project.pbxproj"
+
+          grep -n "BUILD_LIBRARY_FOR_DISTRIBUTION" "$PROJECT_FILE" || true
+
+          python3 - <<'PY'
+          from pathlib import Path
+
+          file = Path("ios/Runner.xcodeproj/project.pbxproj")
+
+          content = file.read_text()
+
+          content = content.replace(
+              "BUILD_LIBRARY_FOR_DISTRIBUTION = YES;",
+              "BUILD_LIBRARY_FOR_DISTRIBUTION = NO;"
+          )
+
+          file.write_text(content)
+
+          print("BUILD_LIBRARY_FOR_DISTRIBUTION set to NO")
+          PY
+
+          grep -n "BUILD_LIBRARY_FOR_DISTRIBUTION" "$PROJECT_FILE" || true      
+
+      - name: Build iOS App for Simulator
+        script: |
           flutter build ios --simulator --debug --no-codesign -v
 
-          BUILD_STATUS=$?
-
-          echo "===== SEARCHING FOR RUNNER.APP ====="
-
-          find build/ios -type d -name "Runner.app" -print 2>/dev/null || true
+      - name: Verify Firebase in Built App
+        script: |
+          set -e
 
           APP_PATH="build/ios/iphonesimulator/Runner.app"
-          ZIP_PATH="build/ios/Runner-simulator.zip"
+          PLIST="$APP_PATH/GoogleService-Info.plist"
 
           if [ ! -d "$APP_PATH" ]; then
-            echo "ERROR: Simulator Runner.app was not generated."
-            echo "Checking all available build files:"
-            find build/ios -maxdepth 5 -type f | head -100
+            echo "ERROR: Runner.app not found!"
             exit 1
           fi
 
-          echo "===== VERIFYING APP ====="
-
-          if [ ! -f "$APP_PATH/Info.plist" ]; then
-            echo "ERROR: Info.plist missing!"
+          if [ ! -f "$PLIST" ]; then
+            echo "ERROR: Firebase plist missing from Runner.app!"
             exit 1
           fi
 
-          APP_EXECUTABLE=$(/usr/libexec/PlistBuddy \
-            -c "Print :CFBundleExecutable" "$APP_PATH/Info.plist")
+          plutil -lint "$PLIST"
 
-          if [ ! -f "$APP_PATH/$APP_EXECUTABLE" ]; then
-            echo "ERROR: App executable missing!"
+          FIREBASE_BUNDLE_ID=$(/usr/libexec/PlistBuddy \
+            -c "Print :BUNDLE_ID" "$PLIST")
+
+          APP_BUNDLE_ID=$(/usr/libexec/PlistBuddy \
+            -c "Print :CFBundleIdentifier" "$APP_PATH/Info.plist")
+
+          echo "Firebase Bundle ID: $FIREBASE_BUNDLE_ID"
+          echo "App Bundle ID: $APP_BUNDLE_ID"
+
+          if [ "$FIREBASE_BUNDLE_ID" != "$APP_BUNDLE_ID" ]; then
+            echo "ERROR: App and Firebase Bundle IDs do not match!"
             exit 1
           fi
 
-          echo "App executable: $APP_EXECUTABLE"
+          echo "SUCCESS: Firebase plist included in Runner.app."
 
-          echo "===== CREATING ZIP ====="
-
-          ditto -c -k --sequesterRsrc --keepParent \
-            "$APP_PATH" "$ZIP_PATH"
-
-          if [ ! -f "$ZIP_PATH" ]; then
-            echo "ERROR: ZIP creation failed!"
-            exit 1
-          fi
-
-          echo "===== ZIP CREATED SUCCESSFULLY ====="
-          ls -lh "$ZIP_PATH"
-
-          if [ "$BUILD_STATUS" -ne 0 ]; then
-            echo "WARNING: Flutter build returned error: $BUILD_STATUS"
-            exit "$BUILD_STATUS"
-          fi    
+      - name: Zip Simulator App
+        script: |
+          cd build/ios/iphonesimulator
+          ditto -c -k --sequesterRsrc --keepParent Runner.app Runner-simulator.zip
 
     artifacts:
-      - build/ios/Runner-simulator.zip
       - build/ios/iphonesimulator/Runner.app
+      - build/ios/iphonesimulator/Runner-simulator.zip
 
     publishing:
       email:

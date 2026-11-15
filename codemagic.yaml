@@ -158,7 +158,7 @@ workflows:
 
       - name: Build iOS App for Device
         script: |
-          flutter build ios --release --no-codesign -v
+          flutter build ios --simulator --debug --no-codesign -v
 
       - name: Verify Firebase in Built App
         script: |

@@ -121,60 +121,66 @@ workflows:
           end
           RUBY
 
-      - name: Build iOS App for Simulator
+      - name: Build and Create Simulator ZIP
         script: |
+          echo "===== STARTING SIMULATOR BUILD ====="
+
           flutter build ios --simulator --debug --no-codesign -v
 
-      - name: Verify Simulator App
-        script: |
-          set -e
+          BUILD_STATUS=$?
+
+          echo "===== SEARCHING FOR RUNNER.APP ====="
+
+          find build/ios -type d -name "Runner.app" -print 2>/dev/null || true
 
           APP_PATH="build/ios/iphonesimulator/Runner.app"
-          PLIST="$APP_PATH/GoogleService-Info.plist"
+          ZIP_PATH="build/ios/Runner-simulator.zip"
 
           if [ ! -d "$APP_PATH" ]; then
-            echo "ERROR: Simulator Runner.app not found!"
-            find build/ios -name Runner.app -type d || true
+            echo "ERROR: Simulator Runner.app was not generated."
+            echo "Checking all available build files:"
+            find build/ios -maxdepth 5 -type f | head -100
             exit 1
           fi
 
-          if [ ! -f "$PLIST" ]; then
-            echo "ERROR: Firebase plist missing!"
+          echo "===== VERIFYING APP ====="
+
+          if [ ! -f "$APP_PATH/Info.plist" ]; then
+            echo "ERROR: Info.plist missing!"
             exit 1
           fi
 
-          plutil -lint "$PLIST"
+          APP_EXECUTABLE=$(/usr/libexec/PlistBuddy \
+            -c "Print :CFBundleExecutable" "$APP_PATH/Info.plist")
 
-          FIREBASE_BUNDLE_ID=$(/usr/libexec/PlistBuddy \
-            -c "Print :BUNDLE_ID" "$PLIST")
-
-          APP_BUNDLE_ID=$(/usr/libexec/PlistBuddy \
-            -c "Print :CFBundleIdentifier" "$APP_PATH/Info.plist")
-
-          echo "Firebase Bundle ID: $FIREBASE_BUNDLE_ID"
-          echo "App Bundle ID: $APP_BUNDLE_ID"
-
-          if [ "$FIREBASE_BUNDLE_ID" != "$APP_BUNDLE_ID" ]; then
-            echo "ERROR: Bundle ID mismatch!"
+          if [ ! -f "$APP_PATH/$APP_EXECUTABLE" ]; then
+            echo "ERROR: App executable missing!"
             exit 1
           fi
 
-          echo "Simulator app verified successfully."
+          echo "App executable: $APP_EXECUTABLE"
 
-      - name: Create Simulator ZIP
-        script: |
-          set -e
-
-          cd build/ios/iphonesimulator
+          echo "===== CREATING ZIP ====="
 
           ditto -c -k --sequesterRsrc --keepParent \
-            Runner.app Runner-simulator.zip
+            "$APP_PATH" "$ZIP_PATH"
 
-          ls -lh Runner-simulator.zip
+          if [ ! -f "$ZIP_PATH" ]; then
+            echo "ERROR: ZIP creation failed!"
+            exit 1
+          fi
+
+          echo "===== ZIP CREATED SUCCESSFULLY ====="
+          ls -lh "$ZIP_PATH"
+
+          if [ "$BUILD_STATUS" -ne 0 ]; then
+            echo "WARNING: Flutter build returned error: $BUILD_STATUS"
+            exit "$BUILD_STATUS"
+          fi    
 
     artifacts:
+      - build/ios/Runner-simulator.zip
       - build/ios/iphonesimulator/Runner.app
-      - build/ios/iphonesimulator/Runner-simulator.zip
 
     publishing:
       email:

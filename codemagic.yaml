@@ -129,10 +129,32 @@ workflows:
           end
           RUBY
 
-      - name: Check Flutter Version
+      - name: Fix Swift Module Interface Configuration
         script: |
-          flutter --version
-          flutter build ios --help
+          echo "Checking Swift build settings..."
+
+          PROJECT_FILE="ios/Runner.xcodeproj/project.pbxproj"
+
+          grep -n "BUILD_LIBRARY_FOR_DISTRIBUTION" "$PROJECT_FILE" || true
+
+          python3 - <<'PY'
+          from pathlib import Path
+
+          file = Path("ios/Runner.xcodeproj/project.pbxproj")
+
+          content = file.read_text()
+
+          content = content.replace(
+              "BUILD_LIBRARY_FOR_DISTRIBUTION = YES;",
+              "BUILD_LIBRARY_FOR_DISTRIBUTION = NO;"
+          )
+
+          file.write_text(content)
+
+          print("BUILD_LIBRARY_FOR_DISTRIBUTION set to NO")
+          PY
+
+          grep -n "BUILD_LIBRARY_FOR_DISTRIBUTION" "$PROJECT_FILE" || true      
 
       - name: Build iOS App for Simulator
         script: |

@@ -1,7 +1,7 @@
 
 workflows:
-  ios-simulator-build:
-    name: iOS Simulator Build
+  ios-device-build:
+    name: iOS Device Build
     max_build_duration: 60
     instance_type: mac_mini_m2
 
@@ -156,15 +156,15 @@ workflows:
 
           grep -n "BUILD_LIBRARY_FOR_DISTRIBUTION" "$PROJECT_FILE" || true      
 
-      - name: Build iOS App for Simulator
+      - name: Build iOS App for Device
         script: |
-          flutter build ios --simulator --debug --no-codesign -v
+          flutter build ios --release --no-codesign -v
 
       - name: Verify Firebase in Built App
         script: |
           set -e
 
-          APP_PATH="build/ios/iphonesimulator/Runner.app"
+          APP_PATH="build/ios/iphoneos/Runner.app"
           PLIST="$APP_PATH/GoogleService-Info.plist"
 
           if [ ! -d "$APP_PATH" ]; then
@@ -195,14 +195,14 @@ workflows:
 
           echo "SUCCESS: Firebase plist included in Runner.app."
 
-      - name: Zip Simulator App
+      - name: Zip Device App
         script: |
-          cd build/ios/iphonesimulator
-          ditto -c -k --sequesterRsrc --keepParent Runner.app Runner-simulator.zip
+          cd build/ios/iphoneos
+          ditto -c -k --sequesterRsrc --keepParent Runner.app Runner-device.zip
 
     artifacts:
-      - build/ios/iphonesimulator/Runner.app
-      - build/ios/iphonesimulator/Runner-simulator.zip
+      - build/ios/iphoneos/Runner.app
+      - build/ios/iphoneos/Runner-device.zip
 
     publishing:
       email:

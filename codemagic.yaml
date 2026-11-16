@@ -1,8 +1,10 @@
 
 workflows:
   ios-simulator-build:
-    name: iOS Simulator Build
-    max_build_duration: 60
+    name: IPC Delegate - iOS Simulator Build
+
+    max_build_duration: 120
+
     instance_type: mac_mini_m2
 
     environment:
@@ -16,148 +18,85 @@ workflows:
       branch_patterns:
         - pattern: main
           include: true
+          source: true
+
+    cache:
+      cache_paths:
+        - $FLUTTER_ROOT/.pub-cache
+        - $HOME/Library/Caches/CocoaPods
 
     scripts:
-      - name: Disable Swift Package Manager
-        script: |
-          flutter config --no-enable-swift-package-manager
 
-      - name: Clean Flutter Project
+      # ---------------------------------------
+      # 1. Flutter Environment
+      # ---------------------------------------
+      - name: Check Flutter and Xcode
         script: |
-          flutter clean
+          set -e
 
-      - name: Get Flutter Packages
+          flutter --version
+          xcodebuild -version
+          pod --version
+
+      # ---------------------------------------
+      # 2. Flutter Dependencies
+      # ---------------------------------------
+      - name: Install Flutter Dependencies
         script: |
+          set -e
+
           flutter pub get
 
+      # ---------------------------------------
+      # 3. Verify Firebase Configuration
+      # ---------------------------------------
       - name: Verify Firebase Configuration
         script: |
           set -e
 
-          PLIST="ios/Runner/GoogleService-Info.plist"
+          FIREBASE_PLIST="ios/Runner/GoogleService-Info.plist"
 
-          if [ ! -f "$PLIST" ]; then
-            echo "ERROR: GoogleService-Info.plist not found!"
+          if [ ! -f "$FIREBASE_PLIST" ]; then
+            echo "ERROR: GoogleService-Info.plist not found"
             exit 1
           fi
 
-          plutil -lint "$PLIST"
-
           FIREBASE_BUNDLE_ID=$(/usr/libexec/PlistBuddy \
-            -c "Print :BUNDLE_ID" "$PLIST")
+            -c "Print :BUNDLE_ID" "$FIREBASE_PLIST")
 
           echo "Firebase Bundle ID: $FIREBASE_BUNDLE_ID"
 
           if [ "$FIREBASE_BUNDLE_ID" != "com.ipc.delegates" ]; then
-            echo "ERROR: Firebase Bundle ID mismatch!"
+            echo "ERROR: Firebase Bundle ID mismatch"
             exit 1
           fi
 
           if [ ! -f "lib/firebase_options.dart" ]; then
-            echo "ERROR: firebase_options.dart not found!"
+            echo "ERROR: firebase_options.dart not found"
             exit 1
           fi
 
-          echo "Firebase configuration verified."
+          echo "Firebase configuration verified"
 
-      - name: Install CocoaPods Dependencies
+      # ---------------------------------------
+      # 4. Install iOS CocoaPods
+      # ---------------------------------------
+      - name: Install CocoaPods
         script: |
+          set -e
+
           cd ios
-          pod install
+
+          export COCOAPODS_DISABLE_STATS=true
+
+          pod install --deployment
+
           cd ..
 
-      - name: Add Firebase Plist to Runner Target
-        script: |
-          ruby <<'RUBY'
-          require 'xcodeproj'
-
-          project_path = 'ios/Runner.xcodeproj'
-          project = Xcodeproj::Project.open(project_path)
-
-          target = project.targets.find { |t| t.name == 'Runner' }
-
-          abort 'ERROR: Runner target not found!' unless target
-
-          runner_group = project.main_group.find_subpath('Runner', true)
-
-          file_ref = runner_group.files.find do |file|
-            file.path == 'GoogleService-Info.plist'
-          end
-
-          file_ref ||= runner_group.new_file('GoogleService-Info.plist')
-
-          resources = target.resources_build_phase
-
-          unless resources.files_references.include?(file_ref)
-            resources.add_file_reference(file_ref, true)
-            puts 'Added GoogleService-Info.plist to Runner resources.'
-          else
-            puts 'GoogleService-Info.plist already registered.'
-          end
-
-          project.save
-          puts 'Runner Xcode project updated successfully.'
-          RUBY
-
-      - name: Fix Swift Bridging Header Configuration
-        script: |
-          ruby <<'RUBY'
-          require 'xcodeproj'
-
-          projects = [
-            'ios/Runner.xcodeproj',
-            'ios/Pods/Pods.xcodeproj'
-          ]
-
-          projects.each do |project_path|
-            next unless File.exist?(project_path)
-
-            project = Xcodeproj::Project.open(project_path)
-
-            project.build_configurations.each do |config|
-              config.build_settings['BUILD_LIBRARY_FOR_DISTRIBUTION'] = 'NO'
-            end
-
-            project.targets.each do |target|
-              target.build_configurations.each do |config|
-                config.build_settings['BUILD_LIBRARY_FOR_DISTRIBUTION'] = 'NO'
-              end
-            end
-
-            project.save
-            puts "Updated: #{project_path}"
-          end
-          RUBY
-
-      - name: Fix Swift Module Interface Configuration
-        script: |
-          echo "Checking Swift build settings..."
-
-          PROJECT_FILE="ios/Runner.xcodeproj/project.pbxproj"
-
-          grep -n "BUILD_LIBRARY_FOR_DISTRIBUTION" "$PROJECT_FILE" || true
-
-          python3 - <<'PY'
-          from pathlib import Path
-
-          file = Path("ios/Runner.xcodeproj/project.pbxproj")
-
-          content = file.read_text()
-
-          content = content.replace(
-              "BUILD_LIBRARY_FOR_DISTRIBUTION = YES;",
-              "BUILD_LIBRARY_FOR_DISTRIBUTION = NO;"
-          )
-
-          file.write_text(content)
-
-          print("BUILD_LIBRARY_FOR_DISTRIBUTION set to NO")
-          PY
-
-          grep -n "BUILD_LIBRARY_FOR_DISTRIBUTION" "$PROJECT_FILE" || true      
-
-
-      - name: Build iOS App for Appetize
+      # ---------------------------------------
+      # 5. Build iOS Simulator
+      # ---------------------------------------
+      - name: Build iOS Simulator
         script: |
           set -e
 
@@ -167,59 +106,67 @@ workflows:
             --no-codesign \
             -v
 
-      - name: Verify Appetize Simulator Binary
+      # ---------------------------------------
+      # 6. Verify Simulator App
+      # ---------------------------------------
+      - name: Verify Simulator Application
         script: |
           set -e
 
           APP_PATH="build/ios/iphonesimulator/Runner.app"
-          PLIST="$APP_PATH/GoogleService-Info.plist"
 
           if [ ! -d "$APP_PATH" ]; then
-            echo "ERROR: Simulator Runner.app not found!"
-            find build/ios -name "Runner.app" -type d
-            exit 1
-          fi
-
-          if [ ! -f "$PLIST" ]; then
-            echo "ERROR: Firebase plist missing!"
-            exit 1
-          fi
-
-          plutil -lint "$PLIST"
-
-          FIREBASE_BUNDLE_ID=$(/usr/libexec/PlistBuddy \
-            -c "Print :BUNDLE_ID" "$PLIST")
-
-          APP_BUNDLE_ID=$(/usr/libexec/PlistBuddy \
-            -c "Print :CFBundleIdentifier" "$APP_PATH/Info.plist")
-
-          echo "Firebase Bundle ID: $FIREBASE_BUNDLE_ID"
-          echo "App Bundle ID: $APP_BUNDLE_ID"
-
-          if [ "$FIREBASE_BUNDLE_ID" != "$APP_BUNDLE_ID" ]; then
-            echo "ERROR: Bundle ID mismatch!"
+            echo "ERROR: Simulator Runner.app not found"
             exit 1
           fi
 
           EXECUTABLE=$(/usr/libexec/PlistBuddy \
-            -c "Print :CFBundleExecutable" "$APP_PATH/Info.plist")
+            -c "Print :CFBundleExecutable" \
+            "$APP_PATH/Info.plist")
 
-          APP_BINARY="$APP_PATH/$EXECUTABLE"
+          echo "Application executable: $EXECUTABLE"
 
-          echo "===== BINARY ARCHITECTURE ====="
-          file "$APP_BINARY"
-          lipo -archs "$APP_BINARY"
+          echo "Checking binary architecture..."
 
-          echo "===== SIMULATOR PLATFORM ====="
-          xcrun vtool -show-build "$APP_BINARY" | tee /tmp/app-build-info.txt
+          file "$APP_PATH/$EXECUTABLE"
+          lipo -archs "$APP_PATH/$EXECUTABLE"
 
-          if ! grep -q "IOSSIMULATOR" /tmp/app-build-info.txt; then
-            echo "ERROR: Binary is not an iOS Simulator build!"
+          echo "Checking binary platform..."
+
+          xcrun vtool -show-build \
+            "$APP_PATH/$EXECUTABLE" \
+            | tee /tmp/ios-build-platform.txt
+
+          if ! grep -q "IOSSIMULATOR" /tmp/ios-build-platform.txt; then
+            echo "ERROR: Binary is NOT an iOS Simulator build"
             exit 1
           fi
 
-          echo "SUCCESS: Simulator binary verified."
+          echo "Simulator platform verified"
 
+          # Verify bundle ID
+          APP_BUNDLE_ID=$(/usr/libexec/PlistBuddy \
+            -c "Print :CFBundleIdentifier" \
+            "$APP_PATH/Info.plist")
+
+          echo "App Bundle ID: $APP_BUNDLE_ID"
+
+          if [ "$APP_BUNDLE_ID" != "com.ipc.delegates" ]; then
+            echo "ERROR: App Bundle ID mismatch"
+            exit 1
+          fi
+
+          # Verify Firebase plist in final app
+          if [ ! -f "$APP_PATH/GoogleService-Info.plist" ]; then
+            echo "ERROR: Firebase plist missing from Runner.app"
+            exit 1
+          fi
+
+          echo "Application verification successful"
+
+      # ---------------------------------------
+      # 7. Generate Appetize ZIP
+      # ---------------------------------------
       - name: Create Appetize ZIP
         script: |
           set -e
@@ -228,25 +175,33 @@ workflows:
           ZIP_PATH="build/ios/Runner.app.zip"
 
           mkdir -p build/ios
+
           rm -f "$ZIP_PATH"
 
-          ditto -c -k --sequesterRsrc --keepParent \
-            "$APP_PATH" "$ZIP_PATH"
+          ditto -c -k \
+            --sequesterRsrc \
+            --keepParent \
+            "$APP_PATH" \
+            "$ZIP_PATH"
 
-          if [ ! -f "$ZIP_PATH" ]; then
-            echo "ERROR: ZIP generation failed!"
+          echo "ZIP generated successfully"
+
+          ls -lh "$ZIP_PATH"
+
+          echo "Checking ZIP contents..."
+
+          unzip -l "$ZIP_PATH" | head -30
+
+          if ! unzip -l "$ZIP_PATH" | grep -q "Runner.app/Info.plist"; then
+            echo "ERROR: Runner.app structure missing in ZIP"
             exit 1
           fi
 
-          echo "===== FINAL APPETIZE FILE ====="
-          ls -lh "$ZIP_PATH"
-
-          unzip -l "$ZIP_PATH" | head -20
-
-          echo "SUCCESS: Appetize ZIP generated."
+          echo "Appetize ZIP verification successful"
 
     artifacts:
       - build/ios/Runner.app.zip
+      - build/ios/iphonesimulator/Runner.app
 
     publishing:
       email:

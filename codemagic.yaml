@@ -89,7 +89,7 @@ workflows:
 
           export COCOAPODS_DISABLE_STATS=true
 
-          pod install --deployment
+          pod install
 
           cd ..
 

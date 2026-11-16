@@ -1,212 +1,46 @@
-
 workflows:
-  ios-simulator-build:
-    name: IPC Delegate - iOS Simulator Build
+  ios-testflight:
+    name: IPC Delegate - TestFlight
 
-    max_build_duration: 120
-
-    instance_type: mac_mini_m2
+    integrations:
+      app_store_connect: Codemagic
 
     environment:
       flutter: stable
       xcode: 26.2.0
       cocoapods: default
 
-    triggering:
-      events:
-        - push
-      branch_patterns:
-        - pattern: main
-          include: true
-          source: true
-
-    cache:
-      cache_paths:
-        - $FLUTTER_ROOT/.pub-cache
-        - $HOME/Library/Caches/CocoaPods
+      ios_signing:
+        distribution_type: app_store
+        bundle_identifier: com.ipc.delegates
 
     scripts:
-
-      # ---------------------------------------
-      # 1. Flutter Environment
-      # ---------------------------------------
-      - name: Check Flutter and Xcode
+      - name: Install dependencies
         script: |
-          set -e
-
-          flutter --version
-          xcodebuild -version
-          pod --version
-
-      # ---------------------------------------
-      # 2. Flutter Dependencies
-      # ---------------------------------------
-      - name: Install Flutter Dependencies
-        script: |
-          set -e
-
           flutter pub get
 
-      # ---------------------------------------
-      # 3. Verify Firebase Configuration
-      # ---------------------------------------
-      - name: Verify Firebase Configuration
-        script: |
-          set -e
-
-          FIREBASE_PLIST="ios/Runner/GoogleService-Info.plist"
-
-          if [ ! -f "$FIREBASE_PLIST" ]; then
-            echo "ERROR: GoogleService-Info.plist not found"
-            exit 1
-          fi
-
-          FIREBASE_BUNDLE_ID=$(/usr/libexec/PlistBuddy \
-            -c "Print :BUNDLE_ID" "$FIREBASE_PLIST")
-
-          echo "Firebase Bundle ID: $FIREBASE_BUNDLE_ID"
-
-          if [ "$FIREBASE_BUNDLE_ID" != "com.ipc.delegates" ]; then
-            echo "ERROR: Firebase Bundle ID mismatch"
-            exit 1
-          fi
-
-          if [ ! -f "lib/firebase_options.dart" ]; then
-            echo "ERROR: firebase_options.dart not found"
-            exit 1
-          fi
-
-          echo "Firebase configuration verified"
-
-      # ---------------------------------------
-      # 4. Install iOS CocoaPods
-      # ---------------------------------------
       - name: Install CocoaPods
         script: |
-          set -e
-
           cd ios
-
-          export COCOAPODS_DISABLE_STATS=true
-
           pod install
-
           cd ..
 
-      # ---------------------------------------
-      # 5. Build iOS Simulator
-      # ---------------------------------------
-      - name: Build iOS Simulator
+      - name: Fetch signing files
         script: |
-          set -e
+          xcode-project use-profiles
 
-          flutter build ios \
-            --simulator \
-            --debug \
-            --no-codesign \
-            -v
-
-      # ---------------------------------------
-      # 6. Verify Simulator App
-      # ---------------------------------------
-      - name: Verify Simulator Application
+      - name: Build IPA
         script: |
-          set -e
-
-          APP_PATH="build/ios/iphonesimulator/Runner.app"
-
-          if [ ! -d "$APP_PATH" ]; then
-            echo "ERROR: Simulator Runner.app not found"
-            exit 1
-          fi
-
-          EXECUTABLE=$(/usr/libexec/PlistBuddy \
-            -c "Print :CFBundleExecutable" \
-            "$APP_PATH/Info.plist")
-
-          echo "Application executable: $EXECUTABLE"
-
-          echo "Checking binary architecture..."
-
-          file "$APP_PATH/$EXECUTABLE"
-          lipo -archs "$APP_PATH/$EXECUTABLE"
-
-          echo "Checking binary platform..."
-
-          xcrun vtool -show-build \
-            "$APP_PATH/$EXECUTABLE" \
-            | tee /tmp/ios-build-platform.txt
-
-          if ! grep -q "IOSSIMULATOR" /tmp/ios-build-platform.txt; then
-            echo "ERROR: Binary is NOT an iOS Simulator build"
-            exit 1
-          fi
-
-          echo "Simulator platform verified"
-
-          # Verify bundle ID
-          APP_BUNDLE_ID=$(/usr/libexec/PlistBuddy \
-            -c "Print :CFBundleIdentifier" \
-            "$APP_PATH/Info.plist")
-
-          echo "App Bundle ID: $APP_BUNDLE_ID"
-
-          if [ "$APP_BUNDLE_ID" != "com.ipc.delegates" ]; then
-            echo "ERROR: App Bundle ID mismatch"
-            exit 1
-          fi
-
-          # Verify Firebase plist in final app
-          if [ ! -f "$APP_PATH/GoogleService-Info.plist" ]; then
-            echo "ERROR: Firebase plist missing from Runner.app"
-            exit 1
-          fi
-
-          echo "Application verification successful"
-
-      # ---------------------------------------
-      # 7. Generate Appetize ZIP
-      # ---------------------------------------
-      - name: Create Appetize ZIP
-        script: |
-          set -e
-
-          APP_PATH="build/ios/iphonesimulator/Runner.app"
-          ZIP_PATH="build/ios/Runner.app.zip"
-
-          mkdir -p build/ios
-
-          rm -f "$ZIP_PATH"
-
-          ditto -c -k \
-            --sequesterRsrc \
-            --keepParent \
-            "$APP_PATH" \
-            "$ZIP_PATH"
-
-          echo "ZIP generated successfully"
-
-          ls -lh "$ZIP_PATH"
-
-          echo "Checking ZIP contents..."
-
-          unzip -l "$ZIP_PATH" | head -30
-
-          if ! unzip -l "$ZIP_PATH" | grep -q "Runner.app/Info.plist"; then
-            echo "ERROR: Runner.app structure missing in ZIP"
-            exit 1
-          fi
-
-          echo "Appetize ZIP verification successful"
+          flutter build ipa \
+            --release \
+            --export-options-plist=/dev/null
 
     artifacts:
-      - build/ios/Runner.app.zip
-      - build/ios/iphonesimulator/Runner.app
+      - build/ios/ipa/*.ipa
 
     publishing:
-      email:
-        recipients:
-          - awaysofttech@gmail.com
-        notify:
-          success: true
-          failure: true
+      app_store_connect:
+        auth: integration
+        submit_to_testflight: true
+        beta_groups:
+          - Internal Testers

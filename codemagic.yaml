@@ -1,6 +1,8 @@
+
 workflows:
   ios-testflight:
     name: IPC Delegate - TestFlight
+    max_build_duration: 120
 
     integrations:
       app_store_connect: Codemagic
@@ -15,7 +17,7 @@ workflows:
         bundle_identifier: com.ipc.delegates
 
     scripts:
-      - name: Install dependencies
+      - name: Install Flutter Dependencies
         script: |
           flutter pub get
 
@@ -25,7 +27,7 @@ workflows:
           pod install
           cd ..
 
-      - name: Fetch signing files
+      - name: Configure iOS Code Signing
         script: |
           xcode-project use-profiles
 
@@ -33,10 +35,11 @@ workflows:
         script: |
           flutter build ipa \
             --release \
-            --export-options-plist=/dev/null
+            --export-options-plist=/Users/builder/export_options.plist
 
     artifacts:
       - build/ios/ipa/*.ipa
+      - /tmp/xcodebuild_logs/*.log
 
     publishing:
       app_store_connect:

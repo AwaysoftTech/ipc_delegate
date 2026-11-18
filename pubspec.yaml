@@ -1,7 +1,7 @@
 name: ipc_delegates
 description: "75th Indian Pharmaceutical Congress 2026"
 publish_to: 'none' # Remove this line if you wish to publish to pub.dev
-version: 1.1.0+3
+version: 1.1.0+4
 
 environment:
   sdk: ^3.11.0
@@ -43,7 +43,7 @@ dependencies:
   firebase_messaging: ^16.0.4
 
   # Notifications
-  awesome_notifications: ^0.10.1
+  awesome_notifications: ^0.12.1
 
 dev_dependencies:
   flutter_test:

@@ -18,6 +18,9 @@ workflows:
         bundle_identifier: com.ipc.delegates
 
     scripts:
+      - name: Clean Flutter
+        script: flutter clean
+
       - name: Install Flutter Dependencies
         script: |
           flutter pub get

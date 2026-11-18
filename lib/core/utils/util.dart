@@ -4,7 +4,6 @@ import 'package:flutter/services.dart';
 import 'package:get/get.dart';
 import 'package:ipc_delegates/core/utils/color_resources.dart';
 import 'package:intl/intl.dart';
-import 'package:audioplayers/audioplayers.dart';
 
 class MyUtils {
   static splashScreenUtils(bool isDark) {
@@ -235,7 +234,7 @@ class MyUtils {
     return printDateTimeString;
   }
 
-  static Future<void> playSound(String soundAssets)
+/*  static Future<void> playSound1(String soundAssets)
   async {
     final player = AudioPlayer();
     await player.play(AssetSource(soundAssets)); // For assets
@@ -243,6 +242,6 @@ class MyUtils {
     async {
       await player.stop();
     });
-  }
+  }*/
 
 }

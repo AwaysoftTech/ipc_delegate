@@ -1,3 +1,4 @@
+
 workflows:
   ios-testflight:
     name: IPC Delegate - TestFlight
@@ -31,10 +32,12 @@ workflows:
         script: |
           xcode-project use-profiles
 
-      - name: Build IPA
+      - name: Build IPA - Version 1.1.0
         script: |
           flutter build ipa \
             --release \
+            --build-name=1.1.0 \
+            --build-number=3 \
             --export-options-plist=/Users/builder/export_options.plist
 
     artifacts:

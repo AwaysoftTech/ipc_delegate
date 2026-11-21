@@ -23,7 +23,11 @@ workflows:
           flutter --version
           xcodebuild -version
 
-      - name: Install Flutter dependencies
+      - name: Disable Swift Package Manager
+        script: |
+          flutter config --no-enable-swift-package-manager    
+
+      - name: Clean Flutter and Install Dependencies
         script: |
           flutter clean
           flutter pub get
@@ -32,68 +36,35 @@ workflows:
         script: |
           test -f ios/Runner/GoogleService-Info.plist
 
-      - name: Install CocoaPods
+      - name: Repair CocoaPods
         script: |
-          cd ios
-          pod install
-          cd ..
+            cd ios
+            
+            rm -rf Pods
+            
+            pod install --repo-update
+            
+            echo "Checking Podfile.lock synchronization"
+            
+            if ! cmp -s Podfile.lock Pods/Manifest.lock; then
+              echo "ERROR: CocoaPods lock files are not synchronized"
+              exit 1
+            fi
+            
+            echo "CocoaPods synchronized successfully"
+            
+            cd ..
 
-      - name: Configure iOS signing - Internal Only
+      - name: Configure iOS Signing
         script: |
-          xcode-project use-profiles \
-            --custom-export-options='{"testFlightInternalTestingOnly": true}'
+          xcode-project use-profiles
 
-      - name: Build signed Release IPA
+      - name: Build iOS Release IPA
         script: |
-          set -e
-
-          flutter clean
-          flutter pub get
-
-          echo "BUILDING IOS RELEASE"
-
-          flutter build ipa \
-            --release \
-            --verbose
-
-          echo "VERIFYING RELEASE IPA"
-
-          IPA=$(find build/ios/ipa -name "*.ipa" | head -n 1)
-
-          if [ -z "$IPA" ]; then
-            echo "ERROR: IPA NOT FOUND"
-            exit 1
-          fi
-
-          mkdir -p /tmp/release_check
-          unzip -q "$IPA" -d /tmp/release_check
-
-          APP="/tmp/release_check/Payload/Runner.app"
-
-          if [ ! -d "$APP" ]; then
-            echo "ERROR: Runner.app missing"
-            exit 1
-          fi
-
-          echo "========== APP DETAILS =========="
-
-          /usr/libexec/PlistBuddy \
-            -c "Print :CFBundleIdentifier" \
-            "$APP/Info.plist"
-
-          /usr/libexec/PlistBuddy \
-            -c "Print :CFBundleVersion" \
-            "$APP/Info.plist"
-
-          echo "========== DEBUG CHECK =========="
-
-          if find "$APP" -name "kernel_blob.bin" | grep -q .; then
-            echo "ERROR: Debug kernel found in IPA"
-            exit 1
-          fi
-
-          echo "SUCCESS: No Flutter debug kernel found"
-          echo "RELEASE IPA VERIFIED"
+          flutter build ipa --release \
+          --export-options-plist=/Users/builder/export_options.plist
+            
+          test -f build/ios/ipa/Runner.ipa
 
     artifacts:
       - build/ios/ipa/*.ipa

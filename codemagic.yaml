@@ -1,10 +1,7 @@
-# ==========================================
-# 3. IOS RELEASE + TESTFLIGHT
-# ==========================================
-workflows:
 
+workflows:
   ios-release:
-    name: iOS Signed Release - TestFlight
+    name: 75th IPC - iOS TestFlight Internal
     max_build_duration: 120
     instance_type: mac_mini_m2
 
@@ -26,88 +23,34 @@ workflows:
           flutter --version
           xcodebuild -version
 
-      - name: Disable Swift Package Manager
-        script: |
-          flutter config --no-enable-swift-package-manager
-
       - name: Install Flutter dependencies
         script: |
           flutter clean
           flutter pub get
 
-      - name: Validate Firebase configuration
+      - name: Validate Firebase
         script: |
           test -f ios/Runner/GoogleService-Info.plist
 
-      - name: Install CocoaPods and Verify Dependencies
+      - name: Install CocoaPods
         script: |
           cd ios
-
           pod install
-
-          echo "========== PODFILE LOCK =========="
-
-          if [ -f Podfile.lock ]; then
-            cat Podfile.lock
-            echo "Podfile.lock generated successfully"
-          else
-            echo "ERROR: Podfile.lock not generated"
-            exit 1
-          fi
-
-          echo "========== AWESOME NOTIFICATIONS =========="
-          grep -A 5 "awesome_notifications" Podfile.lock || true
-
-          echo "========== IOS AWN CORE =========="
-          grep -A 5 "IosAwnCore" Podfile.lock || true
-
-          echo "========== FIREBASE CORE =========="
-          grep -A 5 "FirebaseCore" Podfile.lock || true
-
           cd ..
 
-      - name: Configure iOS signing
+      - name: Configure iOS signing - Internal Only
         script: |
-          xcode-project use-profiles
+          xcode-project use-profiles \
+            --custom-export-options='{"testFlightInternalTestingOnly": true}'
 
-
-      - name: Build signed IPA - RELEASE ONLY
+      - name: Build signed Release IPA
         script: |
-          echo "========== FLUTTER RELEASE BUILD =========="
-          flutter --version
+          flutter build ipa --release
 
-          flutter build ipa --release --verbose
+          echo "Checking IPA..."
+          ls -lh build/ios/ipa/*.ipa
 
-          echo "========== VERIFY IPA =========="
-
-          IPA=$(find build/ios/ipa -maxdepth 1 -name "*.ipa" | head -n 1)
-
-          if [ -z "$IPA" ]; then
-            echo "ERROR: Release IPA not generated"
-            exit 1
-          fi
-
-          echo "Generated IPA: $IPA"
-
-          mkdir -p /tmp/ipa_verify
-          unzip -q "$IPA" -d /tmp/ipa_verify
-
-          APP="/tmp/ipa_verify/Payload/Runner.app"
-
-          if [ ! -d "$APP" ]; then
-            echo "ERROR: Runner.app missing"
-            exit 1
-          fi
-
-          /usr/libexec/PlistBuddy \
-            -c "Print :CFBundleIdentifier" \
-            "$APP/Info.plist"
-
-          /usr/libexec/PlistBuddy \
-            -c "Print :CFBundleVersion" \
-            "$APP/Info.plist"
-
-          echo "RELEASE IPA GENERATED SUCCESSFULLY"
+          test -n "$(find build/ios/ipa -name '*.ipa' -print -quit)"
 
     artifacts:
       - build/ios/ipa/*.ipa
@@ -118,6 +61,8 @@ workflows:
       app_store_connect:
         auth: integration
         submit_to_testflight: true
+        beta_groups:
+          - IPC Internal Testers
 
       email:
         recipients:

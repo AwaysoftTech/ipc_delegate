@@ -70,9 +70,44 @@ workflows:
         script: |
           xcode-project use-profiles
 
-      - name: Build signed IPA
+
+      - name: Build signed IPA - RELEASE ONLY
         script: |
-          flutter build ipa --release
+          echo "========== FLUTTER RELEASE BUILD =========="
+          flutter --version
+
+          flutter build ipa --release --verbose
+
+          echo "========== VERIFY IPA =========="
+
+          IPA=$(find build/ios/ipa -maxdepth 1 -name "*.ipa" | head -n 1)
+
+          if [ -z "$IPA" ]; then
+            echo "ERROR: Release IPA not generated"
+            exit 1
+          fi
+
+          echo "Generated IPA: $IPA"
+
+          mkdir -p /tmp/ipa_verify
+          unzip -q "$IPA" -d /tmp/ipa_verify
+
+          APP="/tmp/ipa_verify/Payload/Runner.app"
+
+          if [ ! -d "$APP" ]; then
+            echo "ERROR: Runner.app missing"
+            exit 1
+          fi
+
+          /usr/libexec/PlistBuddy \
+            -c "Print :CFBundleIdentifier" \
+            "$APP/Info.plist"
+
+          /usr/libexec/PlistBuddy \
+            -c "Print :CFBundleVersion" \
+            "$APP/Info.plist"
+
+          echo "RELEASE IPA GENERATED SUCCESSFULLY"
 
     artifacts:
       - build/ios/ipa/*.ipa

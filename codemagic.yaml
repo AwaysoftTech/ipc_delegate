@@ -18,14 +18,15 @@ workflows:
         bundle_identifier: com.ipc.delegates
 
     scripts:
-      - name: Check environment
+      - name: Check Environment
         script: |
           flutter --version
           xcodebuild -version
+          pod --version
 
       - name: Disable Swift Package Manager
         script: |
-          flutter config --no-enable-swift-package-manager    
+          flutter config --no-enable-swift-package-manager
 
       - name: Clean Flutter and Install Dependencies
         script: |
@@ -36,24 +37,21 @@ workflows:
         script: |
           test -f ios/Runner/GoogleService-Info.plist
 
-      - name: Repair CocoaPods
+      - name: Install CocoaPods
         script: |
-            cd ios
-            
-            rm -rf Pods
-            
-            pod install --repo-update
-            
-            echo "Checking Podfile.lock synchronization"
-            
-            if ! cmp -s Podfile.lock Pods/Manifest.lock; then
-              echo "ERROR: CocoaPods lock files are not synchronized"
-              exit 1
-            fi
-            
-            echo "CocoaPods synchronized successfully"
-            
-            cd ..
+          cd ios
+          pod install --repo-update
+
+          echo "Checking CocoaPods synchronization..."
+
+          if ! cmp -s Podfile.lock Pods/Manifest.lock; then
+            echo "ERROR: Podfile.lock and Manifest.lock are different"
+            diff -u Podfile.lock Pods/Manifest.lock || true
+            exit 1
+          fi
+
+          echo "CocoaPods synchronized successfully"
+          cd ..
 
       - name: Configure iOS Signing
         script: |
@@ -62,9 +60,12 @@ workflows:
       - name: Build iOS Release IPA
         script: |
           flutter build ipa --release \
-          --export-options-plist=/Users/builder/export_options.plist
-            
-          test -f build/ios/ipa/Runner.ipa
+            --export-options-plist=/Users/builder/export_options.plist
+
+          echo "Generated IPA files:"
+          ls -lah build/ios/ipa/
+
+          test -n "$(find build/ios/ipa -maxdepth 1 -name '*.ipa' -print -quit)"
 
     artifacts:
       - build/ios/ipa/*.ipa

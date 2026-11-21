@@ -45,12 +45,55 @@ workflows:
 
       - name: Build signed Release IPA
         script: |
-          flutter build ipa --release
+          set -e
 
-          echo "Checking IPA..."
-          ls -lh build/ios/ipa/*.ipa
+          flutter clean
+          flutter pub get
 
-          test -n "$(find build/ios/ipa -name '*.ipa' -print -quit)"
+          echo "BUILDING IOS RELEASE"
+
+          flutter build ipa \
+            --release \
+            --verbose
+
+          echo "VERIFYING RELEASE IPA"
+
+          IPA=$(find build/ios/ipa -name "*.ipa" | head -n 1)
+
+          if [ -z "$IPA" ]; then
+            echo "ERROR: IPA NOT FOUND"
+            exit 1
+          fi
+
+          mkdir -p /tmp/release_check
+          unzip -q "$IPA" -d /tmp/release_check
+
+          APP="/tmp/release_check/Payload/Runner.app"
+
+          if [ ! -d "$APP" ]; then
+            echo "ERROR: Runner.app missing"
+            exit 1
+          fi
+
+          echo "========== APP DETAILS =========="
+
+          /usr/libexec/PlistBuddy \
+            -c "Print :CFBundleIdentifier" \
+            "$APP/Info.plist"
+
+          /usr/libexec/PlistBuddy \
+            -c "Print :CFBundleVersion" \
+            "$APP/Info.plist"
+
+          echo "========== DEBUG CHECK =========="
+
+          if find "$APP" -name "kernel_blob.bin" | grep -q .; then
+            echo "ERROR: Debug kernel found in IPA"
+            exit 1
+          fi
+
+          echo "SUCCESS: No Flutter debug kernel found"
+          echo "RELEASE IPA VERIFIED"
 
     artifacts:
       - build/ios/ipa/*.ipa

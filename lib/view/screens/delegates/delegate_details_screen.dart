@@ -1,5 +1,3 @@
-import 'dart:convert';
-
 import 'package:ipc_delegates/core/utils/images.dart';
 import 'package:ipc_delegates/core/utils/local_strings.dart';
 import 'package:ipc_delegates/core/utils/style.dart';
@@ -17,15 +15,12 @@ import 'package:ipc_delegates/data/services/api_service.dart';
 import 'package:ipc_delegates/view/components/app-bar/custom_appbar.dart';
 import 'package:ipc_delegates/view/components/custom_loader/custom_loader.dart';
 import 'package:ipc_delegates/core/utils/color_resources.dart';
-import 'package:ipc_delegates/view/components/custom_fab.dart';
 import 'package:ipc_delegates/core/helper/shared_preference_helper.dart';
 
 import 'package:ipc_delegates/view/components/buttons/rounded_button.dart';
 import 'package:ipc_delegates/view/components/buttons/rounded_loading_button.dart';
-import 'package:ipc_delegates/view/components/dialog/basic_dialog.dart';
 import 'package:ipc_delegates/view/components/buttons/card_button.dart';
 
-import 'package:ipc_delegates/view/components/dialog/warning_dialog.dart';
 
 class AttendeeDetailsScreen extends StatefulWidget {
   const AttendeeDetailsScreen({super.key, required this.id});

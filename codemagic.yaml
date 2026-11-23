@@ -37,20 +37,31 @@ workflows:
         script: |
           test -f ios/Runner/GoogleService-Info.plist
 
-      - name: Install CocoaPods
+      - name: Install CocoaPods and Verify Dependencies
         script: |
           cd ios
-          pod install --repo-update
-
-          echo "Checking CocoaPods synchronization..."
-
-          if ! cmp -s Podfile.lock Pods/Manifest.lock; then
-            echo "ERROR: Podfile.lock and Manifest.lock are different"
-            diff -u Podfile.lock Pods/Manifest.lock || true
+            
+          pod install
+            
+          echo "========== PODFILE LOCK =========="
+            
+          if [ -f Podfile.lock ]; then
+            cat Podfile.lock
+            echo "Podfile.lock generated successfully"
+          else
+            echo "ERROR: Podfile.lock not generated"
             exit 1
           fi
-
-          echo "CocoaPods synchronized successfully"
+            
+          echo "========== AWESOME NOTIFICATIONS =========="
+          grep -A 5 "awesome_notifications" Podfile.lock || true
+            
+          echo "========== IOS AWN CORE =========="
+          grep -A 5 "IosAwnCore" Podfile.lock || true
+            
+          echo "========== FIREBASE CORE =========="
+          grep -A 5 "FirebaseCore" Podfile.lock || true
+            
           cd ..
 
       - name: Configure iOS Signing

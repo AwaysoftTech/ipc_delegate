@@ -29,7 +29,6 @@ workflows:
 
       - name: Verify Dependency Manager
         script: |
-          flutter config --no-enable-swift-package-manager
           flutter config --list
           grep -A 5 '^flutter:' pubspec.yaml
 

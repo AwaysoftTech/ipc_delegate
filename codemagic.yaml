@@ -1,4 +1,3 @@
-
 workflows:
   ios-release:
     name: 75th IPC - iOS TestFlight Internal
@@ -24,45 +23,39 @@ workflows:
           xcodebuild -version
           pod --version
 
-      - name: Disable Swift Package Manager
-        script: |
-          flutter config --no-enable-swift-package-manager
-
-      - name: Clean Flutter and Install Dependencies
-        script: |
-          flutter clean
-          flutter pub get
-
       - name: Validate Firebase
         script: |
           test -f ios/Runner/GoogleService-Info.plist
 
-      - name: Install CocoaPods and Verify Dependencies
+      - name: Verify Dependency Manager
         script: |
-          cd ios
-            
-          pod install
-            
-          echo "========== PODFILE LOCK =========="
-            
-          if [ -f Podfile.lock ]; then
-            cat Podfile.lock
-            echo "Podfile.lock generated successfully"
-          else
-            echo "ERROR: Podfile.lock not generated"
-            exit 1
-          fi
-            
-          echo "========== AWESOME NOTIFICATIONS =========="
-          grep -A 5 "awesome_notifications" Podfile.lock || true
-            
-          echo "========== IOS AWN CORE =========="
-          grep -A 5 "IosAwnCore" Podfile.lock || true
-            
-          echo "========== FIREBASE CORE =========="
-          grep -A 5 "FirebaseCore" Podfile.lock || true
-            
-          cd ..
+          flutter config --no-enable-swift-package-manager
+          flutter config --list
+          grep -A 5 '^flutter:' pubspec.yaml
+
+          - name: Clean Project
+            script: |
+              flutter clean
+              rm -rf ios/Pods
+              rm -rf ios/.symlinks
+              rm -rf ios/build
+
+          - name: Install Flutter Dependencies
+            script: |
+              flutter pub get
+
+          - name: Install CocoaPods
+            script: |
+              cd ios
+              pod install --repo-update --clean-install
+                
+              echo "Checking lock files..."
+              cmp -s Podfile.lock Pods/Manifest.lock || {
+                echo "Podfile.lock mismatch"
+                diff -u Podfile.lock Pods/Manifest.lock || true
+                exit 1
+              }
+              cd ..
 
       - name: Configure iOS Signing
         script: |

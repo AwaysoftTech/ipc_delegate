@@ -1,23 +1,24 @@
+
+import 'dart:async';
+
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter/foundation.dart';
+import 'package:flutter/material.dart';
+import 'package:get/get.dart';
+
+import 'package:ipc_delegates/core/utils/color_resources.dart';
 import 'package:ipc_delegates/core/utils/images.dart';
 import 'package:ipc_delegates/core/utils/local_strings.dart';
 import 'package:ipc_delegates/core/utils/url_container.dart';
 import 'package:ipc_delegates/data/controller/auth/verify_otp_controller.dart';
-import 'package:flutter/material.dart';
-import 'package:get/get.dart';
-import 'package:ipc_delegates/core/utils/dimensions.dart';
-import 'package:ipc_delegates/core/utils/style.dart';
 import 'package:ipc_delegates/data/repo/auth/verify_otp_repo.dart';
 import 'package:ipc_delegates/data/services/api_service.dart';
 import 'package:ipc_delegates/view/components/buttons/rounded_button.dart';
 import 'package:ipc_delegates/view/components/buttons/rounded_loading_button.dart';
 import 'package:ipc_delegates/view/components/text-form-field/custom_text_field.dart';
-import 'package:ipc_delegates/core/utils/color_resources.dart';
 
-class VerifyOtpScreen extends StatefulWidget
-{
+class VerifyOtpScreen extends StatefulWidget {
   const VerifyOtpScreen({super.key});
 
   @override
@@ -26,208 +27,376 @@ class VerifyOtpScreen extends StatefulWidget
 
 class _VerifyOtpScreenState extends State<VerifyOtpScreen> {
   final _formKey = GlobalKey<FormState>();
-  String? _fcmToken = '';
-  @override
-  void initState()
-  {
-    Get.put(ApiClient(sharedPreferences: Get.find()));
-    Get.put(VerifyOtpRepo(apiClient: Get.find()));
-    Get.put(VerifyOtpController(verifyOtpRepo: Get.find()));
 
+  String? _fcmToken = '';
+
+  StreamSubscription<String>? _tokenSubscription;
+
+  String mobile = '';
+  String mobileOtp = '';
+
+  @override
+  void initState() {
     super.initState();
 
-    WidgetsBinding.instance.addPostFrameCallback((_)
-    {
-      Get.find<VerifyOtpController>().initData();
-    });
-
-    if (!kIsWeb)
-    {
-      _setupFCMToken();
+    if (!Get.isRegistered<ApiClient>()) {
+      Get.put(ApiClient(sharedPreferences: Get.find()));
     }
 
+    if (!Get.isRegistered<VerifyOtpRepo>()) {
+      Get.put(VerifyOtpRepo(apiClient: Get.find()));
+    }
+
+    if (!Get.isRegistered<VerifyOtpController>()) {
+      Get.put(VerifyOtpController(verifyOtpRepo: Get.find()));
+    }
+
+    final arguments = Get.arguments;
+
+    if (arguments is Map) {
+      mobile = arguments['mobile']?.toString() ?? '';
+      mobileOtp = arguments['mobileOtp']?.toString() ?? '';
+    }
+
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) {
+        Get.find<VerifyOtpController>().initData();
+      }
+    });
+
+    if (!kIsWeb) {
+      _setupFCMToken();
+    }
   }
 
   Future<void> _setupFCMToken() async {
-    // Get the initial token
-    String? token = await FirebaseMessaging.instance.getToken();
-    setState(() {
-      _fcmToken = token;
-    });
-    print("Initial FCM Token: $token");
+    try {
+      final token = await FirebaseMessaging.instance.getToken();
 
-    // Listen for token refreshes
-    FirebaseMessaging.instance.onTokenRefresh.listen((newToken) {
+      if (!mounted) return;
+
       setState(() {
-        _fcmToken = newToken;
+        _fcmToken = token;
       });
-      print("Refreshed FCM Token: $newToken");
-      // You would typically send this new token to your server here
-    });
+
+      _tokenSubscription =
+          FirebaseMessaging.instance.onTokenRefresh.listen((newToken) {
+            if (!mounted) return;
+
+            setState(() {
+              _fcmToken = newToken;
+            });
+          });
+    } catch (e) {
+      debugPrint('FCM token error: $e');
+    }
   }
 
   @override
   void dispose() {
+    _tokenSubscription?.cancel();
     super.dispose();
   }
 
   @override
-  Widget build(BuildContext context)
-  {
-    String mobile = "";
-    String mobileOtp = "";
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
 
-    // Extract the arguments as a map
-    final arguments = ModalRoute.of(context)!.settings.arguments;
-
-    // Make sure it's the type you expect
-    Map<String, dynamic>? argsMap;
-    if (arguments != null && arguments is Map<String, dynamic>) {
-      argsMap = arguments;
-
-      mobile = argsMap['mobile'];
-      mobileOtp = argsMap['mobileOtp'];
-    }
+    final primaryColor = theme.colorScheme.primary;
+    final backgroundColor = theme.scaffoldBackgroundColor;
+    final textColor = theme.colorScheme.onSurface;
 
     return SafeArea(
       child: Scaffold(
-          backgroundColor: Theme.of(context).scaffoldBackgroundColor,
-          body: GetBuilder<VerifyOtpController>(
-            builder: (controller) => SingleChildScrollView(
-              child: Stack(
+        backgroundColor: backgroundColor,
+        body: GetBuilder<VerifyOtpController>(
+          builder: (controller) {
+            return SingleChildScrollView(
+              physics: const BouncingScrollPhysics(),
+              child: Column(
                 children: [
+                  // Header
                   Container(
-                    decoration: const BoxDecoration(
+                    width: double.infinity,
+                    padding: const EdgeInsets.fromLTRB(20, 12, 20, 35),
+                    decoration: BoxDecoration(
                       color: ColorResources.appBarColor,
-                      image: DecorationImage(
-                        alignment: Alignment.topCenter,
+                      image: const DecorationImage(
                         image: AssetImage(MyImages.login),
-                        fit: BoxFit.fitWidth,
+                        fit: BoxFit.cover,
+                        opacity: 0.12,
+                      ),
+                      borderRadius: const BorderRadius.only(
+                        bottomLeft: Radius.circular(32),
+                        bottomRight: Radius.circular(32),
                       ),
                     ),
                     child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      mainAxisAlignment: MainAxisAlignment.center,
                       children: [
-                        Padding(
-                          padding:
-                              const EdgeInsets.only(top: 140.0, bottom: 30.0),
-                          child: Center(
-                            child: CachedNetworkImage(
-                                imageUrl: '${UrlContainer.systemImgUrl}${controller.appLogo}',
-                                height: 200,
-                                fit: BoxFit.fitHeight,
-                                errorWidget: (ctx, object, trx) {
-                                  return Image.asset(
-                                    MyImages.verifyOtp,
-                                    height: 200,
-                                  );
-                                },
-                                placeholder: (ctx, trx) {
-                                  return Image.asset(
-                                    MyImages.verifyOtp,
-                                    height: 200,
-                                  );
-                                }),
-                          ),
-                        ),
-                        SizedBox(
-                          width: MediaQuery.sizeOf(context).width,
-                          child: Padding(
-                            padding: const EdgeInsets.symmetric(
-                                horizontal: 10.0, vertical: 30.0),
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.center,
-                              children: [
-                                Text(LocalStrings.mobile_verify.tr,
-                                  style: mediumOverLarge.copyWith(
-                                      fontSize: Dimensions.fontMegaLarge,
-                                      color: Colors.white),
-                                ),
-                                Text(
-                                  '${LocalStrings.mobile_verify_des.tr}${mobile ?? ''}',
-                                  style: regularDefault.copyWith(
-                                      fontSize: Dimensions.fontDefault,
-                                      color: Colors.white),
-                                ),
-                              ],
+                        // Back button
+                        Align(
+                          alignment: Alignment.centerLeft,
+                          child: IconButton(
+                            onPressed: () => Get.back(),
+                            icon: const Icon(
+                              Icons.arrow_back_ios_new_rounded,
+                              color: Colors.white,
                             ),
                           ),
                         ),
+
+                        const SizedBox(height: 15),
+
+                        // OTP illustration
                         Container(
+                          height: 150,
+                          width: 150,
+                          padding: const EdgeInsets.all(18),
                           decoration: BoxDecoration(
-                              color: Theme.of(context).scaffoldBackgroundColor,
-                              borderRadius: const BorderRadius.only(
-                                topLeft: Radius.circular(20),
-                                topRight: Radius.circular(20),
-                              )),
-                          child: Padding(
-                            padding: const EdgeInsets.symmetric(
-                                horizontal: 15.0, vertical: 25.0),
-                            child: Form(
-                              key: _formKey,
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.center,
-                                children: [
-                                  CustomTextField(
-                                      animatedLabel: true,
-                                      needOutlineBorder: true,
-                                      labelText: LocalStrings.enterOtp.tr,
-                                      hintText: LocalStrings.enterOtp.tr,
-                                      textInputType: TextInputType.number,
-                                      inputAction: TextInputAction.done,
-                                      controller: controller.otpController,
-                                      onSuffixTap: () {},
-                                      onChanged: (value) {
-                                        return;
-                                      },
-                                      validator: (value) {
-                                        if (controller
-                                            .otpController.text.isEmpty) {
-                                          return LocalStrings.enterOtp.tr;
-                                        } else {
-                                          return null;
-                                        }
-                                      }),
-                                  const SizedBox(height: Dimensions.space25),
-                                  controller.submitLoading
-                                      ? const RoundedLoadingBtn()
-                                      : RoundedButton(
-                                          press: () {
-                                            if (_formKey.currentState!.validate())
-                                            {
-                                              controller.userVerifyOTP('${mobile ?? ''}', '${mobileOtp ?? ''}', '${_fcmToken ?? ''}');
-                                            }
-                                          },
-                                          text: LocalStrings.verifyNow.tr,
-                                        ),
-                                  const SizedBox(height: Dimensions.space40)
-                                ],
-                              ),
+                            color: Colors.white.withValues(alpha: 0.15),
+                            shape: BoxShape.circle,
+                            border: Border.all(
+                              color: Colors.white.withValues(alpha: 0.3),
+                              width: 1.5,
                             ),
+                          ),
+                          child: CachedNetworkImage(
+                            imageUrl:
+                            '${UrlContainer.systemImgUrl}${controller.appLogo}',
+                            fit: BoxFit.contain,
+                            placeholder: (context, url) {
+                              return Image.asset(
+                                MyImages.verifyOtp,
+                                fit: BoxFit.contain,
+                              );
+                            },
+                            errorWidget: (context, url, error) {
+                              return Image.asset(
+                                MyImages.verifyOtp,
+                                fit: BoxFit.contain,
+                              );
+                            },
+                          ),
+                        ),
+
+                        const SizedBox(height: 24),
+
+                        Text(
+                          LocalStrings.mobile_verify.tr,
+                          textAlign: TextAlign.center,
+                          style: theme.textTheme.headlineSmall?.copyWith(
+                            color: Colors.white,
+                            fontWeight: FontWeight.w800,
+                            letterSpacing: 0.3,
+                          ),
+                        ),
+
+                        const SizedBox(height: 10),
+
+                        Text(
+                          '${LocalStrings.mobile_verify_des.tr}$mobile',
+                          textAlign: TextAlign.center,
+                          style: theme.textTheme.bodyMedium?.copyWith(
+                            color: Colors.white.withValues(alpha: 0.85),
+                            height: 1.5,
+                          ),
+                        ),
+
+                        const SizedBox(height: 18),
+
+                        // Mobile number chip
+                        Container(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 16,
+                            vertical: 10,
+                          ),
+                          decoration: BoxDecoration(
+                            color: Colors.white.withValues(alpha: 0.15),
+                            borderRadius: BorderRadius.circular(30),
+                            border: Border.all(
+                              color: Colors.white.withValues(alpha: 0.25),
+                            ),
+                          ),
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              const Icon(
+                                Icons.phone_android_rounded,
+                                color: Colors.white,
+                                size: 18,
+                              ),
+                              const SizedBox(width: 8),
+                              Text(
+                                mobile,
+                                style: const TextStyle(
+                                  color: Colors.white,
+                                  fontWeight: FontWeight.w700,
+                                  letterSpacing: 0.5,
+                                ),
+                              ),
+                            ],
                           ),
                         ),
                       ],
                     ),
                   ),
-                  Positioned(
-                    top: 0.0,
-                    left: 0.0,
-                    right: 0.0,
-                    child: AppBar(
-                      leading: IconButton(
-                        icon: const Icon(Icons.arrow_back_ios,
-                            color: Colors.white),
-                        onPressed: () => Get.back(),
-                      ),
-                      backgroundColor: Colors.transparent,
-                      elevation: 0.0, //No shadow
+
+                  // Form section
+                  Padding(
+                    padding: const EdgeInsets.fromLTRB(20, 28, 20, 30),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          'Enter verification code',
+                          style: theme.textTheme.titleLarge?.copyWith(
+                            color: textColor,
+                            fontWeight: FontWeight.w800,
+                          ),
+                        ),
+
+                        const SizedBox(height: 8),
+
+                        Text(
+                          'Please enter the OTP sent to your registered mobile number.',
+                          style: theme.textTheme.bodyMedium?.copyWith(
+                            color: theme.colorScheme.onSurfaceVariant,
+                            height: 1.5,
+                          ),
+                        ),
+
+                        const SizedBox(height: 24),
+
+                        // OTP card
+                        Container(
+                          padding: const EdgeInsets.all(20),
+                          decoration: BoxDecoration(
+                            color: isDark
+                                ? theme.colorScheme.surface
+                                : theme.colorScheme.surface,
+                            borderRadius: BorderRadius.circular(24),
+                            border: Border.all(
+                              color: theme.colorScheme.outlineVariant
+                                  .withValues(alpha: 0.6),
+                            ),
+                            boxShadow: [
+                              if (!isDark)
+                                BoxShadow(
+                                  color: Colors.black.withValues(alpha: 0.04),
+                                  blurRadius: 20,
+                                  offset: const Offset(0, 8),
+                                ),
+                            ],
+                          ),
+                          child: Form(
+                            key: _formKey,
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Row(
+                                  children: [
+                                    Icon(
+                                      Icons.password_rounded,
+                                      color: primaryColor,
+                                      size: 21,
+                                    ),
+                                    const SizedBox(width: 9),
+                                    Text(
+                                      'One-Time Password',
+                                      style:
+                                      theme.textTheme.titleSmall?.copyWith(
+                                        fontWeight: FontWeight.w700,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+
+                                const SizedBox(height: 18),
+
+                                CustomTextField(
+                                  animatedLabel: true,
+                                  needOutlineBorder: true,
+                                  labelText: LocalStrings.enterOtp.tr,
+                                  hintText: LocalStrings.enterOtp.tr,
+                                  textInputType: TextInputType.number,
+                                  inputAction: TextInputAction.done,
+                                  controller: controller.otpController,
+                                  onSuffixTap: () {},
+                                  onChanged: (value) {},
+                                  validator: (value) {
+                                    if (value == null ||
+                                        value.trim().isEmpty) {
+                                      return LocalStrings.enterOtp.tr;
+                                    }
+                                    return null;
+                                  },
+                                ),
+
+                                const SizedBox(height: 24),
+
+                                SizedBox(
+                                  width: double.infinity,
+                                  child: controller.submitLoading
+                                      ? const RoundedLoadingBtn()
+                                      : RoundedButton(
+                                    press: () {
+                                      if (_formKey.currentState!
+                                          .validate()) {
+                                        controller.userVerifyOTP(
+                                          mobile,
+                                          mobileOtp,
+                                          _fcmToken ?? '',
+                                        );
+                                      }
+                                    },
+                                    text: LocalStrings.verifyNow.tr,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
+
+                        const SizedBox(height: 24),
+
+                        // Security note
+                        Container(
+                          padding: const EdgeInsets.all(15),
+                          decoration: BoxDecoration(
+                            color: primaryColor.withValues(alpha: 0.07),
+                            borderRadius: BorderRadius.circular(16),
+                          ),
+                          child: Row(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Icon(
+                                Icons.shield_outlined,
+                                color: primaryColor,
+                                size: 22,
+                              ),
+                              const SizedBox(width: 12),
+                              Expanded(
+                                child: Text(
+                                  'Your verification code is confidential. Do not share it with anyone.',
+                                  style: theme.textTheme.bodySmall?.copyWith(
+                                    color: theme.colorScheme.onSurfaceVariant,
+                                    height: 1.5,
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ],
                     ),
                   ),
                 ],
               ),
-            ),
-          )),
+            );
+          },
+        ),
+      ),
     );
   }
 }

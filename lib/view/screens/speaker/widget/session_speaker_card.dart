@@ -1,24 +1,12 @@
-import 'package:ipc_delegates/core/helper/date_converter.dart';
-import 'package:ipc_delegates/core/route/route.dart';
-import 'package:ipc_delegates/core/utils/color_resources.dart';
-import 'package:ipc_delegates/core/utils/dimensions.dart';
-import 'package:ipc_delegates/core/utils/local_strings.dart';
-import 'package:ipc_delegates/core/utils/style.dart';
-import 'package:ipc_delegates/data/model/speaker/speaker_model.dart';
-import 'package:ipc_delegates/view/components/divider/custom_divider.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
-import 'package:nb_utils/nb_utils.dart';
-import 'package:ipc_delegates/core/utils/util.dart';
-import 'package:ipc_delegates/core/utils/images.dart';
-import 'package:ipc_delegates/view/components/buttons/card_button.dart';
-import 'package:ipc_delegates/view/components/image/circle_shape_image.dart';
-import 'package:cached_network_image/cached_network_image.dart';
+import 'package:ipc_delegates/core/route/route.dart';
+import 'package:ipc_delegates/core/utils/color_resources.dart';
+import 'package:ipc_delegates/core/utils/local_strings.dart';
 import 'package:ipc_delegates/core/utils/url_container.dart';
-import 'package:ipc_delegates/view/components/divider/custom_divider.dart';
-import 'package:ipc_delegates/view/screens/session_quiz/session_quiz_add_screen.dart';
+import 'package:ipc_delegates/data/model/speaker/speaker_model.dart';
 import 'package:ipc_delegates/view/components/circle_image_button.dart';
-
+import 'package:ipc_delegates/view/screens/session_quiz/session_quiz_add_screen.dart';
 
 class SessionSpeakerCard extends StatelessWidget {
   const SessionSpeakerCard({
@@ -26,113 +14,164 @@ class SessionSpeakerCard extends StatelessWidget {
     required this.speakerModel,
     required this.sessionId,
   });
+
   final SpeakerData speakerModel;
   final String sessionId;
 
+  void _openSpeakerDetail() {
+    final speakerId = speakerModel.speakerId ?? "";
+    Get.toNamed(RouteHelper.speakerDetailScreen, arguments: speakerId);
+  }
+
+  void _openQuiz() {
+    final speakerId = speakerModel.speakerId ?? "";
+    Get.to(() => SessionQuizAddScreen(
+        arguments: {'speaker_id': speakerId, 'session_id': sessionId}));
+  }
+
   @override
-  Widget build(BuildContext context)
-  {
-    return Card(
-      margin: const EdgeInsets.symmetric(horizontal: 0, vertical: 0),
-      child: Container(
-        margin: EdgeInsets.zero,
-        padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 5),
-        decoration: BoxDecoration(
-          borderRadius: BorderRadius.circular(12),
-        ),
+  Widget build(BuildContext context) {
+    final primary = ColorResources.primaryColor;
+    final name = (speakerModel.speakerName ?? '').trim();
+
+    return Container(
+      decoration: BoxDecoration(
+        color: Theme.of(context).cardColor,
+        borderRadius: BorderRadius.circular(18),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.06),
+            blurRadius: 12,
+            offset: const Offset(0, 4),
+          ),
+        ],
+      ),
+      child: Padding(
+        padding: const EdgeInsets.all(14),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Row(
-              children: [
-                Container(
-                  height: 70,
-                  width: 70,
-                  padding: EdgeInsets.zero,
-                  alignment: Alignment.center,
-                  decoration: BoxDecoration(
-                    shape: BoxShape.circle,
-                    color: Colors.transparent,
-                    border: Border.all(
-                      width: .3,
-                      color: Theme.of(context).primaryColor,
+            // Tapping the top part opens speaker detail
+            InkWell(
+              borderRadius: BorderRadius.circular(12),
+              onTap: _openSpeakerDetail,
+              child: Row(
+                children: [
+                  Container(
+                    height: 66,
+                    width: 66,
+                    alignment: Alignment.center,
+                    decoration: BoxDecoration(
+                      shape: BoxShape.circle,
+                      color: primary.withValues(alpha: 0.08),
+                      border: Border.all(
+                        width: 2,
+                        color: primary.withValues(alpha: 0.35),
+                      ),
+                    ),
+                    child: CircleImageWidget(
+                      isProfile: true,
+                      imagePath:
+                      '${UrlContainer.profileImgUrl}${speakerModel.speakerImage ?? ""}',
+                      height: 56,
+                      width: 56,
+                      isAsset: false,
                     ),
                   ),
-                  child: CircleImageWidget(
-                    isProfile: true,
-                    imagePath: '${UrlContainer.profileImgUrl}${speakerModel.speakerImage ?? ""}',
-                    height: 60,
-                    width: 60,
-                    isAsset: false,
-                  ),
-                ),
-                12.width,
-                Expanded(
-                  child: Column(
-                    mainAxisAlignment: MainAxisAlignment.start,
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(speakerModel.speakerName ?? "",
-                        overflow: TextOverflow.ellipsis,
-                        maxLines: 2,
-                        style: const TextStyle(
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          name,
+                          maxLines: 2,
+                          overflow: TextOverflow.ellipsis,
+                          style: TextStyle(
                             fontSize: 16,
-                            fontWeight: FontWeight.bold,
-                            color: ColorResources.primaryColor
+                            fontWeight: FontWeight.w700,
+                            color: primary,
+                          ),
                         ),
-                      ),
-                      const SizedBox(height: 10),
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                        children: [
-                          Expanded(
-                            child: Text(
-                              LocalStrings.str_session_detail_lbl_speaker,
-                              style: TextStyle(fontSize: 14, color: Colors.grey),
-                            ),
-                          )
-                        ],
-                      ),
-                      const SizedBox(height: 10),
-                    ],
+                        const SizedBox(height: 6),
+                        Container(
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 10, vertical: 3),
+                          decoration: BoxDecoration(
+                            color: primary.withValues(alpha: 0.1),
+                            borderRadius: BorderRadius.circular(20),
+                          ),
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Icon(Icons.record_voice_over_rounded,
+                                  size: 13, color: primary),
+                              const SizedBox(width: 5),
+                              Flexible(
+                                child: Text(
+                                  LocalStrings.str_session_detail_lbl_speaker,
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                  style: TextStyle(
+                                    fontSize: 12,
+                                    fontWeight: FontWeight.w600,
+                                    color: primary,
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ],
+                    ),
                   ),
-                ),
-              ],
+                  const Icon(Icons.chevron_right_rounded, color: Colors.grey),
+                ],
+              ),
             ),
-            12.height,
+            const SizedBox(height: 14),
             Row(
               children: [
                 Expanded(
-                  child: ElevatedButton(
-                    onPressed: ()
-                    {
-                      String speakerId = speakerModel.speakerId ?? "";
-                      Get.toNamed(RouteHelper.speakerDetailScreen, arguments: speakerId);
-                    },
-                    style: ElevatedButton.styleFrom(
-                      foregroundColor: Colors.black,
+                  child: OutlinedButton.icon(
+                    onPressed: _openSpeakerDetail,
+                    icon: const Icon(Icons.person_outline_rounded, size: 17),
+                    label: Text(
+                      LocalStrings.str_session_detail_lbl_more_about,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(fontSize: 12),
+                    ),
+                    style: OutlinedButton.styleFrom(
+                      foregroundColor: primary,
+                      side: BorderSide(color: primary.withValues(alpha: 0.5)),
+                      padding: const EdgeInsets.symmetric(vertical: 10),
                       shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(8),
+                        borderRadius: BorderRadius.circular(12),
                       ),
                     ),
-                    child: Text(LocalStrings.str_session_detail_lbl_more_about, style: TextStyle(fontSize: 12, color: Colors.black)),
                   ),
                 ),
-                10.width,
+                const SizedBox(width: 10),
                 Expanded(
-                  child: ElevatedButton(
-                    onPressed: () {
-                      String speakerId = speakerModel.speakerId ?? "";
-                      Get.to(() => SessionQuizAddScreen(arguments: {'speaker_id': speakerId, 'session_id': sessionId}));
-                    },
+                  child: ElevatedButton.icon(
+                    onPressed: _openQuiz,
+                    icon: const Icon(Icons.question_answer_rounded, size: 17),
+                    label: Text(
+                      LocalStrings.str_session_detail_lbl_ask_quiz_now,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(fontSize: 12),
+                    ),
                     style: ElevatedButton.styleFrom(
-                      backgroundColor: ColorResources.primaryColor,
+                      backgroundColor: primary,
                       foregroundColor: Colors.white,
+                      elevation: 0,
+                      padding: const EdgeInsets.symmetric(vertical: 10),
                       shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(8),
+                        borderRadius: BorderRadius.circular(12),
                       ),
                     ),
-                    child: Text(LocalStrings.str_session_detail_lbl_ask_quiz_now, style: TextStyle(fontSize: 12, color: Colors.white)),
                   ),
                 ),
               ],

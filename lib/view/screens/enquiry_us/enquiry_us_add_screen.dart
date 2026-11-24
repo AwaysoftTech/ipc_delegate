@@ -1,33 +1,18 @@
-import 'dart:convert';
 
-import 'package:ipc_delegates/core/utils/images.dart';
-import 'package:ipc_delegates/core/utils/local_strings.dart';
-import 'package:ipc_delegates/core/utils/style.dart';
-import 'package:ipc_delegates/core/utils/url_container.dart';
-import 'package:ipc_delegates/data/controller/enquiry_us/enquiry_us_controller.dart';
-import 'package:ipc_delegates/data/repo/enquiry_us/enquiry_us_repo.dart';
-import 'package:ipc_delegates/view/components/circle_image_button.dart';
-import 'package:ipc_delegates/view/components/column_widget/card_column.dart';
-import 'package:ipc_delegates/view/components/divider/custom_divider.dart';
-import 'package:ipc_delegates/view/components/image/circle_shape_image.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
-import 'package:ipc_delegates/core/utils/dimensions.dart';
+
+import 'package:ipc_delegates/core/helper/shared_preference_helper.dart';
+import 'package:ipc_delegates/core/utils/images.dart';
+import 'package:ipc_delegates/core/utils/local_strings.dart';
+import 'package:ipc_delegates/data/controller/enquiry_us/enquiry_us_controller.dart';
+import 'package:ipc_delegates/data/repo/enquiry_us/enquiry_us_repo.dart';
 import 'package:ipc_delegates/data/services/api_service.dart';
 import 'package:ipc_delegates/view/components/app-bar/custom_appbar.dart';
 import 'package:ipc_delegates/view/components/custom_loader/custom_loader.dart';
-import 'package:ipc_delegates/core/utils/color_resources.dart';
-import 'package:ipc_delegates/view/components/custom_fab.dart';
-import 'package:ipc_delegates/core/helper/shared_preference_helper.dart';
-
 import 'package:ipc_delegates/view/components/buttons/rounded_button.dart';
-import 'package:ipc_delegates/view/components/buttons/rounded_loading_button.dart';
-import 'package:ipc_delegates/view/components/dialog/basic_dialog.dart';
-import 'package:ipc_delegates/view/components/buttons/card_button.dart';
-import 'package:ipc_delegates/view/components/text-form-field/custom_text_field.dart';
 import 'package:ipc_delegates/view/components/dialog/warning_dialog.dart';
-import 'package:ipc_delegates/view/components/text-form-field/custom_drop_down_text_field.dart';
-import 'package:ipc_delegates/view/components/dialog/progress_dialog.dart';
+import 'package:ipc_delegates/view/components/text-form-field/custom_text_field.dart';
 
 class EnquiryUsAddScreen extends StatefulWidget {
   const EnquiryUsAddScreen({super.key});
@@ -36,213 +21,420 @@ class EnquiryUsAddScreen extends StatefulWidget {
   State<EnquiryUsAddScreen> createState() => _EnquiryUsAddScreenState();
 }
 
-class _EnquiryUsAddScreenState extends State<EnquiryUsAddScreen>
-{
+class _EnquiryUsAddScreenState extends State<EnquiryUsAddScreen> {
   final formKey = GlobalKey<FormState>();
 
-  bool showFab = true;
-  String attendeeId = "";
-  String eventId = "";
-  late final controller;
+  late EnquiryUsController controller;
   late EnquiryUsRepo enquiryUsRepo;
 
-  @override
-  void initState()
-  {
-    Get.put(ApiClient(sharedPreferences: Get.find()));
-    Get.put(EnquiryUsRepo(apiClient: Get.find()));
-    controller = Get.put(EnquiryUsController(enquiryUsRepo: Get.find()));
-    enquiryUsRepo = Get.put(EnquiryUsRepo(apiClient: Get.find()));
+  String attendeeId = '';
+  String eventId = '';
 
+  final int maxMessageLength = 1000;
+
+  @override
+  void initState() {
     super.initState();
+
+    if (!Get.isRegistered<ApiClient>()) {
+      Get.put(ApiClient(sharedPreferences: Get.find()));
+    }
+
+    if (!Get.isRegistered<EnquiryUsRepo>()) {
+      Get.put(EnquiryUsRepo(apiClient: Get.find()));
+    }
+
+    if (!Get.isRegistered<EnquiryUsController>()) {
+      Get.put(EnquiryUsController(enquiryUsRepo: Get.find()));
+    }
+
+    controller = Get.find<EnquiryUsController>();
+    enquiryUsRepo = Get.find<EnquiryUsRepo>();
 
     controller.isLoading = false;
 
-    attendeeId = enquiryUsRepo.apiClient.sharedPreferences.getString(SharedPreferenceHelper.attendeeId) ?? "";
-    eventId = enquiryUsRepo.apiClient.sharedPreferences.getString(SharedPreferenceHelper.eventId)!;
-  }
+    attendeeId = enquiryUsRepo.apiClient.sharedPreferences
+        .getString(SharedPreferenceHelper.attendeeId) ??
+        '';
 
-  ScrollController scrollController = ScrollController();
+    eventId = enquiryUsRepo.apiClient.sharedPreferences
+        .getString(SharedPreferenceHelper.eventId) ??
+        '';
+  }
 
   @override
   void dispose() {
-    controller.isLoading = false;
-    controller.isSubmitLoading = false;
-    scrollController.removeListener(() {});
     super.dispose();
   }
 
   @override
-  Widget build(BuildContext context)
-  {
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
+
     return GetBuilder<EnquiryUsController>(
-      builder: (controller) => SafeArea(
-        child: Scaffold(
-          backgroundColor: Theme.of(context).scaffoldBackgroundColor,
-          appBar: CustomAppBar(
-            title: LocalStrings.str_enquiry_us_title.tr,
-            bgColor: Theme.of(context).appBarTheme.backgroundColor!,
-          ),
-          body: controller.isLoading
-              ? const CustomLoader()
-              : Stack(
-            children: [
-              Positioned(
-                top: -10,
-                child: Container(
-                  height: 100,
-                  width: MediaQuery.of(context).size.width,
-                  color: Theme.of(context).appBarTheme.backgroundColor!,
-                ),
-              ),
-              Align(
-            alignment: Alignment.topCenter,
-            child: SingleChildScrollView(
-              padding: const EdgeInsets.only(
-                left: Dimensions.space5,
-                right: Dimensions.space5,
-                top: Dimensions.space20,
-                bottom: Dimensions.space20,
-              ),
-              child: Container(
-                width: MediaQuery.of(context).size.width,
-                padding: const EdgeInsets.symmetric(
-                  vertical: Dimensions.space10,
-                  horizontal: Dimensions.space10,
-                ),
-                decoration: BoxDecoration(
-                  color: Theme.of(context).cardColor,
-                  borderRadius: BorderRadius.circular(15),
-                ),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-
-                    Card(
-                      elevation: 4,
-                      child: Padding(
-                        padding: const EdgeInsets.all(5),
-                        child: Row(
-                          children: [
-                            CircleAvatar(
-                              radius: 30,
-                              backgroundColor: Colors.blueAccent[300],
-                              child: CircleAvatar(
-                                radius: 30,
-                                backgroundColor: Colors.white30,
-                                child: Image.asset(
-                                  MyImages.enquiry,
-                                  height: 40,
-                                  width: 40,
-                                ),
-                              ),
-                            ),
-                            const SizedBox(width: 16),
-                            Expanded(
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Text(LocalStrings.str_enquiry_us_title,
-                                    overflow: TextOverflow.ellipsis,
-                                    maxLines: 3,
-                                    style: const TextStyle(
-                                      fontSize: 17,
-                                      fontWeight: FontWeight.bold,
-                                    ),
-                                  ),
-                                  const SizedBox(height: 4),
-                                  Padding(
-                                    padding: const EdgeInsets.symmetric(vertical: 5.0, horizontal: 1.0),
-                                    child: Text(LocalStrings.str_enquiry_us_title_des,
-                                      overflow: TextOverflow.ellipsis,
-                                      maxLines: 5,
-                                      style: TextStyle(fontSize: 14, color: Colors.grey),
-                                    ),
-                                  ),
-                                  const SizedBox(height: 4),
-
-                                ],
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                    ),
-                    const SizedBox(height: Dimensions.space20),
-                    _attendeeDetail(controller),
-
-                    const SizedBox(height: Dimensions.space40),
-                    const SizedBox(height: Dimensions.space40),
-                  ],
-                ),
+      builder: (controller) {
+        return SafeArea(
+          child: Scaffold(
+            backgroundColor: theme.scaffoldBackgroundColor,
+            appBar: CustomAppBar(
+              title: LocalStrings.str_enquiry_us_title.tr,
+              bgColor: theme.appBarTheme.backgroundColor ??
+                  theme.colorScheme.surface,
+            ),
+            body: controller.isLoading
+                ? const CustomLoader()
+                : SingleChildScrollView(
+              physics: const BouncingScrollPhysics(),
+              padding: const EdgeInsets.fromLTRB(18, 20, 18, 30),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  _buildHeader(context),
+                  const SizedBox(height: 26),
+                  _buildSectionTitle(context),
+                  const SizedBox(height: 14),
+                  _buildEnquiryForm(context, controller),
+                ],
               ),
             ),
           ),
+        );
+      },
+    );
+  }
 
+  Widget _buildHeader(BuildContext context) {
+    final theme = Theme.of(context);
+    final colors = theme.colorScheme;
+
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(22),
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          colors: [
+            colors.primary,
+            colors.primary.withValues(alpha: 0.78),
+          ],
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+        ),
+        borderRadius: BorderRadius.circular(24),
+        boxShadow: [
+          BoxShadow(
+            color: colors.primary.withValues(alpha: 0.20),
+            blurRadius: 18,
+            offset: const Offset(0, 8),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Container(
+                height: 58,
+                width: 58,
+                decoration: BoxDecoration(
+                  color: Colors.white.withValues(alpha: 0.18),
+                  borderRadius: BorderRadius.circular(18),
+                  border: Border.all(
+                    color: Colors.white.withValues(alpha: 0.25),
+                  ),
+                ),
+                child: Center(
+                  child: Image.asset(
+                    MyImages.enquiry,
+                    height: 34,
+                    width: 34,
+                    color: Colors.white,
+                    errorBuilder: (_, __, ___) => const Icon(
+                      Icons.support_agent_rounded,
+                      color: Colors.white,
+                      size: 34,
+                    ),
+                  ),
+                ),
+              ),
+              const Spacer(),
+              Container(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 12,
+                  vertical: 7,
+                ),
+                decoration: BoxDecoration(
+                  color: Colors.white.withValues(alpha: 0.17),
+                  borderRadius: BorderRadius.circular(30),
+                ),
+                child: const Row(
+                  children: [
+                    Icon(
+                      Icons.chat_bubble_outline_rounded,
+                      color: Colors.white,
+                      size: 15,
+                    ),
+                    SizedBox(width: 6),
+                    Text(
+                      'Support',
+                      style: TextStyle(
+                        color: Colors.white,
+                        fontWeight: FontWeight.w600,
+                        fontSize: 12,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
             ],
           ),
-        ),
+          const SizedBox(height: 22),
+          Text(
+            LocalStrings.str_enquiry_us_title.tr,
+            style: const TextStyle(
+              color: Colors.white,
+              fontSize: 23,
+              fontWeight: FontWeight.w800,
+              letterSpacing: 0.2,
+            ),
+          ),
+          const SizedBox(height: 9),
+          Text(
+            LocalStrings.str_enquiry_us_title_des.tr,
+            style: TextStyle(
+              color: Colors.white.withValues(alpha: 0.88),
+              fontSize: 14,
+              height: 1.6,
+            ),
+          ),
+          const SizedBox(height: 18),
+          const Row(
+            children: [
+              Icon(
+                Icons.verified_user_outlined,
+                color: Colors.white,
+                size: 17,
+              ),
+              SizedBox(width: 7),
+              Text(
+                'We are here to help you',
+                style: TextStyle(
+                  color: Colors.white,
+                  fontSize: 12,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+            ],
+          ),
+        ],
       ),
     );
   }
 
-  Widget _attendeeDetail(EnquiryUsController controller)
-  {
+  Widget _buildSectionTitle(BuildContext context) {
+    final theme = Theme.of(context);
+
+    return Row(
+      children: [
+        Container(
+          height: 40,
+          width: 40,
+          decoration: BoxDecoration(
+            color: theme.colorScheme.primary.withValues(alpha: 0.10),
+            borderRadius: BorderRadius.circular(12),
+          ),
+          child: Icon(
+            Icons.edit_note_rounded,
+            color: theme.colorScheme.primary,
+            size: 25,
+          ),
+        ),
+        const SizedBox(width: 12),
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                'Write Your Message',
+                style: theme.textTheme.titleMedium?.copyWith(
+                  fontWeight: FontWeight.w800,
+                ),
+              ),
+              const SizedBox(height: 3),
+              Text(
+                'Describe your query or concern below',
+                style: theme.textTheme.bodySmall?.copyWith(
+                  color: theme.textTheme.bodySmall?.color
+                      ?.withValues(alpha: 0.65),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildEnquiryForm(
+      BuildContext context,
+      EnquiryUsController controller,
+      ) {
+    final theme = Theme.of(context);
+    final colors = theme.colorScheme;
+
     return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(18),
       decoration: BoxDecoration(
-          color: Theme.of(context).scaffoldBackgroundColor,
-          borderRadius: const BorderRadius.only(
-            topLeft: Radius.circular(20),
-            topRight: Radius.circular(20),
-          )),
-      padding: const EdgeInsets.symmetric(
-          horizontal: 8.0, vertical: Dimensions.space20),
+        color: theme.cardColor,
+        borderRadius: BorderRadius.circular(22),
+        border: Border.all(
+          color: theme.dividerColor.withValues(alpha: 0.35),
+        ),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(
+              alpha: theme.brightness == Brightness.dark ? 0.08 : 0.035,
+            ),
+            blurRadius: 18,
+            offset: const Offset(0, 7),
+          ),
+        ],
+      ),
       child: Form(
         key: formKey,
         child: Column(
-          crossAxisAlignment: CrossAxisAlignment.center,
+          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
+            Row(
+              children: [
+                Text(
+                  LocalStrings.str_enquiry_us_lbl_enter_message.tr,
+                  style: theme.textTheme.titleSmall?.copyWith(
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+                const SizedBox(width: 4),
+                const Text(
+                  '*',
+                  style: TextStyle(
+                    color: Colors.red,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 12),
+
             CustomTextField(
               animatedLabel: true,
               needOutlineBorder: true,
-              labelText: LocalStrings.str_enquiry_us_lbl_enter_message.tr,
+              labelText:
+              LocalStrings.str_enquiry_us_lbl_enter_message.tr,
               textInputType: TextInputType.multiline,
-              maxLines: 10,
+              maxLines: 8,
               focusNode: controller.messageFocusNode,
               controller: controller.messageController,
-              inputAction: TextInputAction.done,
+              inputAction: TextInputAction.newline,
               onChanged: (value) {
-                return;
+                setState(() {});
               },
               validator: (value) {
-                if (value!.isEmpty) {
+                if (value == null || value.trim().isEmpty) {
                   return 'Please Enter Message'.tr;
-                } else {
-                  return null;
                 }
+
+                if (value.trim().length < 10) {
+                  return 'Please enter at least 10 characters'.tr;
+                }
+
+                if (value.length > maxMessageLength) {
+                  return 'Message cannot exceed 1000 characters'.tr;
+                }
+
+                return null;
               },
             ),
-            const SizedBox(height: Dimensions.space20),
-            RoundedButton(
+
+            const SizedBox(height: 8),
+
+            Align(
+              alignment: Alignment.centerRight,
+              child: Text(
+                '${controller.messageController.text.length}/$maxMessageLength',
+                style: theme.textTheme.bodySmall?.copyWith(
+                  color: controller.messageController.text.length >
+                      maxMessageLength
+                      ? Colors.red
+                      : theme.hintColor,
+                  fontWeight: FontWeight.w500,
+                ),
+              ),
+            ),
+
+            const SizedBox(height: 22),
+
+            SizedBox(
+              width: double.infinity,
+              height: 54,
+              child: RoundedButton(
                 text: LocalStrings.str_enquiry_us_b_send_now.tr,
-                press: ()
-                {
-                  if (formKey.currentState!.validate())
-                  {
-                    const WarningAlertDialog().warningAlertDialog(context, () {
-                      Get.back();
-                      controller.addEnquiryUs(context, attendeeId, eventId);
-                    },
-                        title: 'Confirm to',
-                        image: MyImages.enquiry,
-                        subTitle: 'Send Enquiry');
+                press: () {
+                  FocusScope.of(context).unfocus();
+
+                  if (formKey.currentState!.validate()) {
+                    const WarningAlertDialog().warningAlertDialog(
+                      context,
+                          () {
+                        Get.back();
+                        controller.addEnquiryUs(
+                          context,
+                          attendeeId,
+                          eventId,
+                        );
+                      },
+                      title: 'Confirm to',
+                      image: MyImages.enquiry,
+                      subTitle: 'Send Enquiry',
+                    );
                   }
-                }),
-            const SizedBox(height: Dimensions.space20),
+                },
+              ),
+            ),
+
+            const SizedBox(height: 16),
+
+            Container(
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: colors.primary.withValues(alpha: 0.07),
+                borderRadius: BorderRadius.circular(14),
+              ),
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Icon(
+                    Icons.info_outline_rounded,
+                    size: 19,
+                    color: colors.primary,
+                  ),
+                  const SizedBox(width: 9),
+                  Expanded(
+                    child: Text(
+                      'Please provide complete details so our support team can assist you better.',
+                      style: theme.textTheme.bodySmall?.copyWith(
+                        height: 1.5,
+                        color: theme.textTheme.bodyMedium?.color,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
           ],
         ),
       ),
     );
   }
-
 }

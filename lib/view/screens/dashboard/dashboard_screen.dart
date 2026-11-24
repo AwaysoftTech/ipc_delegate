@@ -64,8 +64,7 @@ class _HomeScreenState extends State<HomeScreen> {
     }
 
     Future.delayed(const Duration(seconds: 3), () {
-      if (!controller.isLoading &&
-          controller.dashboardModel.eventSettingData?.needUpdate == 'Yes' &&
+      if (!controller.isLoading && controller.dashboardModel.eventSettingData?.needUpdate == 'Yes' &&
           mounted) {
         showAppUpdateDialog(context,
             controller.dashboardModel.eventSettingData?.titleUpdate ?? "");

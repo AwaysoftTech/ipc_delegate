@@ -67,30 +67,28 @@ showAppUpdateDialog(BuildContext context, String titleUpdate)
                             text: LocalStrings.update.tr,
                             press: ()
                             async {
-                              String playStoreUrl = "https://play.google.com/store/apps/details?id=com.ipc.delegates";
-                              String appStoreUrl = "https://apps.apple.com/app/com.ipc.delegates";
-                              Uri playUrl = Uri.parse(playStoreUrl);
-                              Uri appUrl = Uri.parse(appStoreUrl);
+                              const String playStoreUrl =
+                                  'https://play.google.com/store/apps/details?id=com.ipc.delegates';
 
-                              if (Platform.isAndroid)
-                              {
-                                try {
-                                  if (await canLaunchUrl(playUrl)) {
-                                    await launchUrl(playUrl, mode: LaunchMode.externalApplication);
-                                    }
+                              const String appStoreUrl =
+                                  'https://apps.apple.com/us/app/75th-ipc-delegate/id6835759518';
+
+                              final Uri storeUrl = Uri.parse(
+                                Platform.isAndroid ? playStoreUrl : appStoreUrl,
+                              );
+
+                              try {
+                                final bool launched = await launchUrl(
+                                  storeUrl,
+                                  mode: LaunchMode.externalApplication,
+                                );
+
+                                if (!launched) {
+                                  throw Exception('Unable to open app store');
+                                }
                               } catch (error) {
-                              throw("Cannot launch Google map");
-                              }
-                              }
-                              if (Platform.isIOS)
-                              {
-                                try {
-                                if (await canLaunchUrl(appUrl)) {
-                                  await launchUrl(playUrl, mode: LaunchMode.externalApplication);
-                                  }
-                                  } catch (error) {
-                                  throw("Cannot launch Apple map");
-                              }
+                                debugPrint('Store launch error: $error');
+                                rethrow;
                               }
                             },
                             horizontalPadding: 3,
